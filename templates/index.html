@@ -1,0 +1,69 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+{% set entitas_label = (session.get('entitas') or 'jurangmangucare').capitalize().replace('Jmcare', 'JurangmanguCare').replace('Dkm', 'DKM Ash Shiddiq') %}
+<h1>Rekap Transaksi {{
+    entitas_label.capitalize()
+        .replace('Jmcare', 'JurangmanguCare')
+        .replace('Dkm', 'DKM Ash Shiddiq')
+}}</h1>
+
+<style>
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    td.numeric { text-align: right; }
+    input[type="text"], input[type="submit"], .btn {
+        padding: 6px 12px;
+        margin-right: 5px;
+    }
+    .header-buttons {
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+</style>
+
+<div class="header-buttons">
+    {% if session['user'] == 'admin' %}
+    <form method="POST" style="display:inline;">
+        <label for="entitas">Pilih Entitas:</label>
+        <select name="entitas" id="entitas" onchange="this.form.submit()">
+            <option value="jurangmangucare" {% if session['entitas'] == 'jurangmangucare' %}selected{% endif %}>Jurangmangu Care</option>
+            <option value="dkm" {% if session['entitas'] == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
+        </select>
+
+        <label for="kode_anggota">Cari berdasarkan Kode Anggota:</label>
+        <input type="text" id="kode_anggota" name="kode_anggota" value="{{ kode or '' }}">
+        <input type="submit" value="Terapkan">
+    </form>
+    <a href="{{ url_for('tambah') }}" class="btn">+ Tambah Transaksi</a>
+    {% endif %}
+    <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+</div>
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Nama Anggota</th>
+            <th>Kode Anggota</th>
+            <th>Jenis Anggota</th>
+            <th>Kode Jenis</th>
+            <th>Jenis Transaksi</th>
+            <th class="numeric">Total Jumlah</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["NamaAnggota"] }}</td>
+            <td>{{ row["KodeAnggota"] }}</td>
+            <td>{{ row["JenisAnggota"] }}</td>
+            <td>{{ row["KodeJenisTrans"] }}</td>
+            <td>{{ row["JenisTransaksi"] }}</td>
+            <td class="numeric">{{ "{:,}".format(row["TotalJumlah"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

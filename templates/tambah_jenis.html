@@ -1,0 +1,19 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>Tambah Jenis Transaksi Baru</h2>
+
+<form method="POST">
+    <label for="kode">Kode Jenis Transaksi:</label>
+    <input type="text" name="kode" required>
+
+    <label for="nama">Nama Jenis Transaksi:</label>
+    <input type="text" name="nama" required>
+
+    <input type="submit" value="Tambah">
+</form>
+
+{% if message %}
+    <p><strong>{{ message }}</strong></p>
+{% endif %}
+{% endblock %}

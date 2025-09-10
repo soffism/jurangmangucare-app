@@ -1,0 +1,38 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<h2>Laporan Rekap Akhir Transaksi</h2>
+
+<form method="POST">
+    <label for="entitas">Pilih Entitas:</label>
+    <select name="entitas" id="entitas" onchange="this.form.submit()">
+        <option value="jurangmangucare" {% if session['entitas'] == 'jurangmangucare' %}selected{% endif %}>Jurangmangu Care</option>
+        <option value="dkm" {% if session['entitas'] == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
+    </select>
+</form>
+
+<style>
+    th.total, td.total { text-align: right; }
+    .export-button { margin-top: 15px; margin-bottom: 15px; }
+</style>
+
+<div class="export-button">
+    <a href="{{ url_for('export_rekapakhir') }}" class="btn">📥 Ekspor ke Excel</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Jenis Transaksi</th>
+            <th class="total">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["JenisTransaksi"] }}</td>
+            <td class="total">{{ "{:,}".format(row["Total"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

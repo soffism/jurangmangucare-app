@@ -1,0 +1,27 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>Tambah Anggota Baru</h2>
+
+<form method="POST">
+    <label for="kode_anggota">Kode Anggota:</label>
+    <input type="text" id="kode_anggota" name="kode_anggota" required>
+
+    <label for="nama_anggota">Nama Anggota:</label>
+    <input type="text" id="nama_anggota" name="nama_anggota" required>
+
+    <label for="jenis_anggota">Jenis Anggota:</label>
+    <select id="jenis_anggota" name="jenis_anggota" required>
+        <option value="Orang JMCare">Orang JMCare</option>
+        <option value="Orang MAS">Orang MAS</option>
+        <option value="AkunInternal">AkunInternal</option>
+    </select>
+
+    <br><br>
+    <input type="submit" value="Simpan">
+</form>
+
+{% if message %}
+    <p style="margin-top: 15px;">{{ message }}</p>
+{% endif %}
+{% endblock %}

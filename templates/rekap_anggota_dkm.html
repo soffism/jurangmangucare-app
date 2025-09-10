@@ -1,0 +1,22 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<h2>Rekap Transaksi DKM Ash Shiddiq</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Kategori</th>
+            <th>Jenis Transaksi</th>
+            <th style="text-align:right;">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["KategoriTransaksi"] }}</td>
+            <td>{{ row["JenisTransaksi"] }}</td>
+            <td style="text-align:right;">{{ "{:,}".format(row["Total"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

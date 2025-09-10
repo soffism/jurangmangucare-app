@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <title>Admin - JurangmanguCare</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .sidebar h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .sidebar a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 12px;
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background-color: #f7f7f7;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+        }
+
+        th {
+            background-color: #eee;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        .entitas-info {
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .sidebar form {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar"> 
+    <h2>📊 Menu</h2>
+
+    <!-- Info entitas aktif -->
+    {% if session.get('entitas') %}
+        <div class="entitas-info">
+            Aktif: <strong>{{ session['entitas'] | upper }}</strong>
+        </div>
+    {% endif %}
+
+    <!-- Form ganti entitas (hanya admin) -->
+    {% if session.get('user') == 'admin' %}
+    <form method="POST" action="{{ url_for('rekapakhir') }}">
+        <label for="entitas" style="font-size:14px;">Ganti Entitas:</label>
+        <select name="entitas" onchange="this.form.submit()" style="width:100%;">
+            <option value="jurangmangucare" {% if session.get('entitas') == 'jurangmangucare' %}selected{% endif %}>Jurangmangu Care</option>
+            <option value="dkm" {% if session.get('entitas') == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
+        </select>
+    </form>
+    {% endif %}
+
+    <!-- Menu untuk ADMIN -->
+    {% if session.get('user') == 'admin' %}
+        <a href="{{ url_for('rekapakhir') }}">🏠 Dashboard (Rekap Akhir)</a>
+        <a href="{{ url_for('index_viewrekap') }}">📄 Rekap Transaksi</a>
+        {% if session.get('entitas') == 'dkm' %}
+        <a href="#" style="color:gray; pointer-events: none; cursor: default;" title="Tidak tersedia untuk entitas DKM">📋 Pivot Transaksi (nonaktif)</a>
+        {% else %}
+            <a href="{{ url_for('pivot_transaksi') }}">📋 Pivot Transaksi</a>
+        {% endif %}
+        <a href="{{ url_for('tambah') }}">➕ Tambah Transaksi</a>
+        <a href="{{ url_for('tambah_anggota') }}">👥 Tambah Anggota</a>
+        <a href="{{ url_for('tambah_jenis') }}">🧾 Tambah Jenis Transaksi</a>
+    {% else %}
+    <!-- Menu untuk ANGGOTA -->
+        <a href="{{ url_for('transaksi_user') }}">📄 Transaksi Saya</a>
+        <a href="{{ url_for('rekapanggota') }}">📊 Rekap Transaksi</a>
+    {% endif %}
+
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+</div>
+
+<div class="main-content">
+    {% block content %}
+    {% endblock %}
+</div>
+
+</body>
+</html>

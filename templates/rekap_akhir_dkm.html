@@ -1,0 +1,37 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>Laporan Rekap Akhir Transaksi (DKM Ash Shiddiq)</h2>
+
+<style>
+    th.total, td.total {
+        text-align: right;
+    }
+    .export-button {
+        margin-bottom: 15px;
+    }
+</style>
+
+<div class="export-button">
+    <a href="{{ url_for('export_rekapakhir_dkm') }}" class="btn">📥 Ekspor ke Excel</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Kategori Transaksi</th>
+            <th>Jenis Transaksi</th>
+            <th class="total">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["KategoriTransaksi"] }}</td>
+            <td>{{ row["JenisTransaksi"] }}</td>
+            <td class="total">{{ "{:,}".format(row["Total"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

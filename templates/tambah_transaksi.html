@@ -1,0 +1,94 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>➕ Form Tambah Transaksi</h2>
+
+<!-- Form Dropdown Entitas -->
+<form method="POST">
+    <div class="form-group">
+        <label for="entitas">Pilih Entitas:</label>
+        <select name="entitas" id="entitas" onchange="this.form.submit()" required>
+            <option value="jurangmangucare" {% if session.get('entitas', 'jurangmangucare') == 'jurangmangucare' %}selected{% endif %}>JurangmanguCare</option>
+            <option value="dkm" {% if session.get('entitas') == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
+        </select>
+    </div>
+</form>
+
+<!-- Form Input Transaksi -->
+<form method="POST">
+    <div class="form-group">
+        <label for="tanggal">Tanggal Transaksi:</label>
+        <input type="date" name="tanggal" id="tanggal" value="{{ today }}" required>
+    </div>
+
+    <div class="form-group">
+        <label for="kode_anggota">Sumber Dana:</label>
+        <select name="kode_anggota" id="kode_anggota" required>
+            <option value="">--Pilih Sumber Dana--</option>
+            {% for anggota in anggota_list %}
+                <option value="{{ anggota['KodeAnggota'] }}">{{ anggota['KodeAnggota'] }} - {{ anggota['NamaAnggota'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="kode_jenis">Kode Jenis Transaksi:</label>
+        <select name="kode_jenis" id="kode_jenis" required>
+            <option value="">--Pilih Jenis Transaksi--</option>
+            {% for jenis in jenis_list %}
+                <option value="{{ jenis['KodeJenisTrans'] }}">{{ jenis['KodeJenisTrans'] }} - {{ jenis['JenisTransaksi'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="uraian">Uraian:</label>
+        <input type="text" name="uraian" id="uraian" required>
+    </div>
+
+    <div class="form-group">
+        <label for="jumlah">Jumlah:</label>
+        <input type="number" name="jumlah" id="jumlah" required>
+    </div>
+
+    <input type="submit" class="btn" value="💾 Simpan">
+</form>
+
+{% if last_trans %}
+<div style="background-color:#e0ffe0; border:1px solid #70d070; padding:10px; margin-top:20px;">
+    <h4>✅ Transaksi Berhasil Disimpan:</h4>
+    <ul>
+        <li>Tanggal: {{ last_trans["Tanggal"] }}</li>
+        <li>Kode Anggota: {{ last_trans["KodeAnggota"] }}</li>
+        <li>Kode Jenis: {{ last_trans["KodeJenisTrans"] }}</li>
+        <li>Uraian: {{ last_trans["Uraian"] }}</li>
+        <li>Jumlah: {{ "{:,}".format(last_trans["Jumlah"]) }}</li>
+    </ul>
+</div>
+{% endif %}
+
+<h3>🕓 10 Transaksi Terakhir</h3>
+<table>
+    <tr>
+        <th>Tanggal</th>
+        <th>Anggota</th>
+        <th>Jenis</th>
+        <th>Uraian</th>
+        <th>Jumlah</th>
+        <th>Aksi</th>
+    </tr>
+    {% for trans in last_10 %}
+    <tr>
+        <td>{{ trans["Tanggal"] }}</td>
+        <td>{{ trans["KodeAnggota"] }}</td>
+        <td>{{ trans["KodeJenisTrans"] }}</td>
+        <td>{{ trans["Uraian"] }}</td>
+        <td>{{ "{:,}".format(trans["Jumlah"]) }}</td>
+        <td>
+            <a href="{{ url_for('edit_transaksi', id=trans['No']) }}">✏️ Edit</a>
+            <a href="{{ url_for('hapus_transaksi', id=trans['No']) }}" onclick="return confirm('Yakin ingin menghapus transaksi ini?')">❌ Hapus</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

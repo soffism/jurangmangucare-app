@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+    <title>Edit Transaksi</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+
+        /* Tambahkan atau ubah bagian ini: */
+        select {
+            width: 30%;
+            padding: 6px;
+            margin-top: 5px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Edit Transaksi</h2>
+
+    <form method="POST">
+        <label for="kode_anggota">Sumber Dana:</label>
+        <select name="kode_anggota" id="kode_anggota" required>
+            {% for anggota in anggota_list %}
+                <option value="{{ anggota['KodeAnggota'] }}" {% if data['KodeAnggota'] == anggota['KodeAnggota'] %}selected{% endif %}>
+                    {{ anggota['KodeAnggota'] }} - {{ anggota['NamaAnggota'] }}
+                </option>
+            {% endfor %}
+        </select><br>
+
+        <label>Kode Jenis:</label>
+        <select name="kode_jenis">
+            {% for jenis in jenis_list %}
+                <option value="{{ jenis['KodeJenisTrans'] }}" {% if jenis['KodeJenisTrans'] == data['KodeJenisTrans'] %}selected{% endif %}>
+                    {{ jenis['KodeJenisTrans'] }}
+                </option>
+            {% endfor %}
+        </select><br>
+
+        <label>Uraian:</label>
+        <input type="text" name="uraian" value="{{ data['Uraian'] }}"><br>
+
+        <label>Jumlah:</label>
+        <input type="number" name="jumlah" value="{{ data['Jumlah'] }}"><br>
+
+        <input type="submit" value="Update">
+    </form>
+    <a href="{{ url_for('tambah') }}">← Kembali</a>
+</body>
+</html>

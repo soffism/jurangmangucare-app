@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head>
+    <title>Konfirmasi Hapus</title>
+</head>
+<body>
+    <h2>Yakin Hapus Transaksi Ini?</h2>
+    <ul>
+        <li>Tanggal: {{ transaksi["Tanggal"] }}</li>
+        <li>Anggota: {{ transaksi["KodeAnggota"] }}</li>
+        <li>Jenis: {{ transaksi["KodeJenisTrans"] }}</li>
+        <li>Uraian: {{ transaksi["Uraian"] }}</li>
+        <li>Jumlah: {{ transaksi["Jumlah"] }}</li>
+    </ul>
+    <form method="POST">
+        <button type="submit">Ya, Hapus Sekarang</button>
+        <a href="{{ url_for('tambah') }}">Batal</a>
+    </form>
+</body>
+</html>

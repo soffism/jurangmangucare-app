@@ -1,0 +1,30 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>Riwayat Transaksi Anda</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Tanggal</th>
+            <th>Kode</th>
+            <th>Nama</th>
+            <th>Jenis</th>
+            <th>Uraian</th>
+            <th>Jumlah</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["Tanggal"] }}</td>
+            <td>{{ row["KodeAnggota"] }}</td>
+            <td>{{ row["NamaAnggota"] }}</td>
+            <td>{{ row["JenisTransaksi"] }}</td>
+            <td>{{ row["Uraian"] }}</td>
+            <td style="text-align:right">{{ "{:,}".format(row["Jumlah"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>Laporan Pivot Transaksi per Anggota</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Nama Anggota</th>
+            <th>Kode Anggota</th>
+            <th>Infaq</th>
+            <th>Tabungan</th>
+            <th>Pinjaman</th>
+            <th>Qurban</th>
+            <th>Ramadan</th>
+            <th>Operasional</th>
+            <th>Revitalisasi</th>
+            <th>Zakat</th>
+            <th>Kosong</th>
+            <th>Dana Dari KU</th>
+            <th>Total Saldo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["NamaAnggota"] }}</td>
+            <td>{{ row["KodeAnggota"] }}</td>
+            <td>{{ "{:,}".format(row["Infaq"]) }}</td>
+            <td>{{ "{:,}".format(row["Tabungan"]) }}</td>
+            <td>{{ "{:,}".format(row["Pinjaman"]) }}</td>
+            <td>{{ "{:,}".format(row["Qurban"]) }}</td>
+            <td>{{ "{:,}".format(row["Ramadan"]) }}</td>
+            <td>{{ "{:,}".format(row["Operasional"]) }}</td>
+            <td>{{ "{:,}".format(row["Revitalisasi"]) }}</td>
+            <td>{{ "{:,}".format(row["Zakat"]) }}</td>
+            <td>{{ "{:,}".format(row["Kosong"]) }}</td>
+            <td>{{ "{:,}".format(row["DanaDariKU"]) }}</td>
+            <td><strong>{{ "{:,}".format(row["TotalSaldo"]) }}</strong></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
