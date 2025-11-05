@@ -1,0 +1,136 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<h2>📈 Laporan Aktivitas / Operasional ({{ session.get('entitas') | upper }})</h2>
+
+<style>
+    /* Styling Dasar */
+    /* Mengubah lebar tabel menjadi 100% agar lebih responsif */
+    .la-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 20px; 
+        font-size: 16px; /* DIBESARKAN: Dari 14px menjadi 16px */
+    }
+    /* Default cell alignment */
+    .la-table th, .la-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    
+    /* Header Kelompok */
+    .header-group { background-color: #cceeff; font-weight: bold; }
+    
+    /* Baris Rincian */
+    .detail-row { background-color: #f9f9f9; }
+    .master-lookup { color: #555; font-style: italic; font-size: 0.9em; }
+    
+    /* Baris Total */
+    .total-row { font-weight: bold; background-color: #e6e6e6; }
+    .surplus-defisit-row { font-weight: bold; } /* Baris utama Surplus */
+    .surplus-row { background-color: #d4edda; color: #155724; }
+    .defisit-row { background-color: #f8d7da; color: #721c24; }
+    
+    /* Angka - Dipakai untuk perataan kanan pada isi sel */
+    /* PERBAIKAN: Menambahkan !important untuk memastikan perataan kanan. */
+    .numeric { 
+        text-align: right !important; 
+        font-family: monospace; 
+    }
+
+    /* PERBAIKAN: Menghapus aturan th.numeric karena sudah di-force oleh .numeric !important */
+</style>
+
+{% set groups = data | groupby('Kelompok') %}
+
+{# Menggunakan NAMESPACE untuk variabel yang nilainya harus dipertahankan di dalam loop #}
+{% set ns = namespace(total_pendapatan=0, total_beban=0) %}
+
+{# MULAI DENGAN SATU TABEL BESAR UNTUK PENDAPATAN DAN BEBAN #}
+<table class="la-table">
+    <thead>
+        <tr class="total-row">
+            <th style="width: 25%;">Kode Akun</th>
+            <th style="width: 25%;">Deskripsi Akun 1</th>
+            <th style="width: 25%;">Deskripsi Akun 2</th>
+            {# Header "Jumlah" rata kanan #}
+            <th class="numeric" style="width: 25%;">Jumlah</th> 
+        </tr>
+    </thead>
+    <tbody>
+        {# ========================= PENDAPATAN ========================= #}
+        <tr class="header-group">
+            <td colspan="4">A. PENDAPATAN</td>
+        </tr>
+        
+        {% for group_name, items in groups %}
+            {% if group_name == 'PENDAPATAN' %}
+                {% for item in items %}
+                    <tr class="detail-row">
+                        <td>{{ item['Rincian'] }}</td>
+                        {# Menggunakan Keterangan 1 dan Keterangan 2 sesuai permintaan #}
+                        <td class="master-lookup">{{ item['NamaAnggota'] }}</td> 
+                        <td class="master-lookup">{{ item['JenisTransaksi'] }}</td>
+                        <td class="numeric">
+                            {% set nilai_pendapatan = item['SaldoNet'] %}
+                            {{ "{:,.2f}".format(nilai_pendapatan) }}
+                            {% set ns.total_pendapatan = ns.total_pendapatan + nilai_pendapatan %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+        <tr class="total-row">
+            {# Kolom Label total rata kanan #}
+            <td colspan="3" class="numeric">TOTAL PENDAPATAN</td> 
+            <td class="numeric"><strong>{{ "{:,.2f}".format(ns.total_pendapatan) }}</strong></td>
+        </tr>
+
+
+        {# ========================= BEBAN ========================= #}
+        {# PERBAIKAN: Menghapus style="border-top: 3px solid #333;" untuk menghilangkan garis hitam #}
+        <tr class="header-group"> 
+            <td colspan="4">B. BEBAN</td>
+        </tr>
+
+        {% for group_name, items in groups %}
+            {% if group_name == 'BEBAN' %}
+                {% for item in items %}
+                    <tr class="detail-row">
+                        <td>{{ item['Rincian'] }}</td>
+                        {# Kolom ini secara otomatis akan sama lebarnya dengan kolom PENDAPATAN di atas #}
+                        <td class="master-lookup">{{ item['NamaAnggota'] }}</td> 
+                        <td class="master-lookup">{{ item['JenisTransaksi'] }}</td>
+                        <td class="numeric">
+                            {% set nilai_beban = item['SaldoNet'] %} 
+                            {{ "{:,.2f}".format(nilai_beban) }}
+                            {% set ns.total_beban = ns.total_beban + nilai_beban %} 
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+        <tr class="total-row">
+            {# Kolom Label total rata kanan #}
+            <td colspan="3" class="numeric">TOTAL BEBAN</td>
+            <td class="numeric"><strong>{{ "{:,.2f}".format(ns.total_beban) }}</strong></td>
+        </tr>
+
+        {# ========================= SURPLUS/DEFISIT ========================= #}
+        {% set surplus_defisit = ns.total_pendapatan - ns.total_beban %}
+        {% set row_class = 'surplus-row' if surplus_defisit >= 0 else 'defisit-row' %}
+
+        <tr class="surplus-defisit-row {{ row_class }}" style="border-top: 3px double #333;">
+            {# Kolom Label Surplus rata kanan #}
+            <td colspan="3" class="numeric">SURPLUS / (DEFISIT)</td>
+            <td class="numeric">
+                {% if surplus_defisit >= 0 %}
+                    {{ "{:,.2f}".format(surplus_defisit) }}
+                {% else %}
+                    ({{ "{:,.2f}".format(surplus_defisit | abs) }})
+                {% endif %}
+            </td>
+        </tr>
+
+    </tbody>
+</table>
+
+<div style="clear: both;"></div>
+
+{% endblock %}

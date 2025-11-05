@@ -1,0 +1,43 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>🗑️ Konfirmasi Hapus Anggota</h2>
+
+<div style="margin-bottom: 20px;">
+    Anggota yang akan dihapus:
+    <ul>
+        <li>**No Anggota:** {{ data["NoAnggota"] }}</li>
+        <li>**Kode Anggota:** {{ data["KodeAnggota"] }}</li>
+        <li>**Nama Anggota:** {{ data["NamaAnggota"] }}</li>
+        <li>**Jenis Anggota:** {{ data["JenisAnggota"] }}</li>
+    </ul>
+</div>
+
+{% if transaksi_count > 0 %}
+    <div style="background-color:#f8d7da; color:#721c24; border:1px solid #f5c6cb; padding:15px; border-radius:5px; margin-bottom: 20px; font-weight: bold;">
+        ⚠️ PERINGATAN! Anggota **{{ data['KodeAnggota'] }}** memiliki **{{ transaksi_count }}** transaksi terkait. Hapus transaksi terkait terlebih dahulu sebelum menghapus anggota ini.
+    </div>
+    <a href="{{ url_for('tambah_anggota') }}" class="btn" style="background-color: #007bff;">Kembali ke Daftar Anggota</a>
+{% else %}
+    <div style="background-color:#fff3cd; color:#856404; border:1px solid #ffeeba; padding:15px; border-radius:5px; margin-bottom: 20px;">
+        Apakah Anda **yakin** ingin menghapus anggota ini? Tindakan ini tidak dapat dibatalkan.
+    </div>
+    
+    <form method="POST" style="margin-top: 20px;">
+        <button type="submit" class="btn" style="background-color: #dc3545;">Ya, Hapus Permanen</button>
+        <a href="{{ url_for('tambah_anggota') }}" class="btn" style="background-color: #6c757d;">Batal</a>
+    </form>
+{% endif %}
+
+<style>
+    .btn {
+        padding: 10px 15px;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+</style>
+{% endblock %}

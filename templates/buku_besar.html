@@ -1,0 +1,35 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<style>
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    td.numeric { text-align: right; }
+</style>
+
+<h2>📒 Laporan Buku Besar DKM Ash Shiddiq</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>No Trans</th>
+            <th>Kd Tanggal</th>
+            <th>Uraian</th>
+            <th>Kode Akun</th>
+            <th class="numeric">Debit</th>
+            <th class="numeric">Kredit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["No"] }}</td>
+            <td>{{ row["KdTanggal"] }}</td>
+            <td>{{ row["Uraian"] }}</td>
+            <td><strong>{{ row["KodeAkun"] }}</strong></td>
+            <td class="numeric">{{ "{:,}".format(row["Debit"]|default(0)) }}</td>
+            <td class="numeric">{{ "{:,}".format(row["Kredit"]|default(0)) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

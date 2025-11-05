@@ -1,30 +1,100 @@
 {% extends "base_admin.html" %}
 
 {% block content %}
-<h2>Riwayat Transaksi Anda</h2>
+<h2 style="color: #2c3e50; border-bottom: 2px solid #34495e; padding-bottom: 10px;">💰 Riwayat Transaksi Anda</h2>
 
-<table>
-    <thead>
-        <tr>
-            <th>Tanggal</th>
-            <th>Kode</th>
-            <th>Nama</th>
-            <th>Jenis</th>
-            <th>Uraian</th>
-            <th>Jumlah</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for row in data %}
-        <tr>
-            <td>{{ row["Tanggal"] }}</td>
-            <td>{{ row["KodeAnggota"] }}</td>
-            <td>{{ row["NamaAnggota"] }}</td>
-            <td>{{ row["JenisTransaksi"] }}</td>
-            <td>{{ row["Uraian"] }}</td>
-            <td style="text-align:right">{{ "{:,}".format(row["Jumlah"]) }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<style>
+    /* 1. Styling Dasar Tabel */
+    .transaksi-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 14px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 8px; /* Sudut membulat pada tabel */
+        overflow: hidden; /* Penting untuk radius dan scroll */
+    }
+    
+    /* 2. Styling Header */
+    .transaksi-table thead th {
+        background-color: #34495e; /* Warna header yang solid */
+        color: white;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    /* 3. Styling Sel Data */
+    .transaksi-table tbody td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #ecf0f1; /* Garis tipis antar baris */
+        vertical-align: middle;
+    }
+
+    /* 4. Styling Baris Ganjil/Genap */
+    .transaksi-table tbody tr:nth-child(even) {
+        background-color: #f7f9fc; /* Warna abu-abu muda untuk baris genap */
+    }
+
+    /* 5. Styling Angka (Kolom Jumlah) */
+    .numeric {
+        text-align: right !important;
+        font-family: monospace; /* Font monospace untuk angka agar lebih rapi */
+    }
+
+    /* 6. Responsif: Wrapper untuk Scroll Horizontal pada Layar Kecil */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    /* 7. Highlight Baris saat Hover */
+    .transaksi-table tbody tr:hover {
+        background-color: #e9f2ff;
+    }
+    
+    /* 8. Styling untuk Jumlah Negatif */
+    .negatif {
+        color: #e74c3c; /* Merah */
+        font-weight: bold;
+    }
+</style>
+
+<div class="table-responsive">
+    <table class="transaksi-table">
+        <thead>
+            <tr>
+                <th style="width: 10%;">Tanggal</th>
+                <th style="width: 10%;">Kode Anggota</th>
+                <th style="width: 20%;">Nama Anggota</th>
+                <th style="width: 10%;">Jenis Transaksi</th>
+                <th style="width: 35%;">Uraian</th>
+                <th class="numeric" style="width: 15%;">Jumlah (Rp)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {# PERBAIKAN: Menggunakan 'row in data' agar sesuai dengan variabel yang dikirim dari route Flask #}
+            {% for row in data %} 
+            {% set jumlah_display = "{:,.2f}".format(row["Jumlah"] | abs) %}
+            {% set class_negatif = 'negatif' if row["Jumlah"] < 0 else '' %}
+            
+            <tr>
+                <td>{{ row["Tanggal"] }}</td>
+                <td>{{ row["KodeAnggota"] }}</td>
+                <td>{{ row["NamaAnggota"] }}</td>
+                <td>{{ row["JenisTransaksi"] }}</td>
+                <td>{{ row["Uraian"] }}</td>
+                <td class="numeric {{ class_negatif }}">
+                    {% if row["Jumlah"] < 0 %}
+                        ({{ jumlah_display }})
+                    {% else %}
+                        {{ jumlah_display }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

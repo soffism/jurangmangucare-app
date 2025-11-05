@@ -1,27 +1,140 @@
 {% extends "base_admin.html" %}
 
 {% block content %}
-<h2>Tambah Anggota Baru</h2>
+<h2>👥 Tambah Anggota Baru</h2>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <p style="margin-top: 15px; padding: 10px; border-radius: 5px; 
+                     background-color: {% if category == 'success' %}#d4edda{% elif category == 'error' %}#f8d7da{% else %}#fff3cd{% endif %}; 
+                     color: {% if category == 'success' %}#155724{% elif category == 'error' %}#721c24{% else %}#856404{% endif %}; 
+                     border: 1px solid {% if category == 'success' %}#c3e6cb{% elif category == 'error' %}#f5c6cb{% else %}#ffeeba{% endif %};">
+                {{ message }}
+            </p>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+{% if message %}
+    <p style="margin-top: 15px;"><strong>{{ message }}</strong></p>
+{% endif %}
 
 <form method="POST">
-    <label for="kode_anggota">Kode Anggota:</label>
-    <input type="text" id="kode_anggota" name="kode_anggota" required>
+    <div class="form-group">
+        <label for="no_anggota">No. Anggota (Lihat daftar di bawah, harus unik):</label>
+        <input type="number" id="no_anggota" name="no_anggota" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="kode_anggota">Kode Anggota (Cth: WIA, AZH):</label>
+        <input type="text" id="kode_anggota" name="kode_anggota" required>
+    </div>
 
-    <label for="nama_anggota">Nama Anggota:</label>
-    <input type="text" id="nama_anggota" name="nama_anggota" required>
+    <div class="form-group">
+        <label for="nama_anggota">Nama Anggota (Cth: Windi Ariestanti):</label>
+        <input type="text" id="nama_anggota" name="nama_anggota" required>
+    </div>
 
-    <label for="jenis_anggota">Jenis Anggota:</label>
-    <select id="jenis_anggota" name="jenis_anggota" required>
-        <option value="Orang JMCare">Orang JMCare</option>
-        <option value="Orang MAS">Orang MAS</option>
-        <option value="AkunInternal">AkunInternal</option>
-    </select>
+    <div class="form-group">
+        <label for="jenis_anggota">Jenis Anggota:</label>
+        <select id="jenis_anggota" name="jenis_anggota" required>
+            <option value="Orang JMCare">Orang JMCare</option>
+            <option value="Anggota MAS">Anggota MAS</option>
+            <option value="AkunInternal">AkunInternal</option>
+        </select>
+    </div>
 
-    <br><br>
-    <input type="submit" value="Simpan">
+    <input type="submit" class="btn" value="💾 Simpan Anggota Baru">
 </form>
 
-{% if message %}
-    <p style="margin-top: 15px;">{{ message }}</p>
-{% endif %}
+
+<h3 style="margin-top: 30px;">📝 Daftar Anggota ({{ anggota_list|length }} Data)</h3>
+
+<div style="margin-bottom: 10px;">
+    **Urutkan Berdasarkan:**
+    <a href="{{ url_for('tambah_anggota', sort='no_asc') }}" 
+       class="btn-sort {% if current_sort == 'no_asc' %}active{% endif %}">
+        No Anggota (Asc)
+    </a>
+    <a href="{{ url_for('tambah_anggota', sort='jenis_asc') }}" 
+       class="btn-sort {% if current_sort == 'jenis_asc' %}active{% endif %}">
+        Jenis Anggota
+    </a>
+    <a href="{{ url_for('tambah_anggota', sort='no_desc') }}" 
+       class="btn-sort {% if current_sort == 'no_desc' or not current_sort %}active{% endif %}">
+        No Anggota (Desc)
+    </a>
+</div>
+
+<div style="max-height: 400px; overflow-y: auto;">
+    <table id="anggotaTable">
+        <thead>
+            <tr>
+                <th>NoAnggota</th>
+                <th>KodeAnggota</th>
+                <th>NamaAnggota</th>
+                <th>JenisAnggota</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for anggota in anggota_list %} 
+            <tr>
+                <td>**{{ anggota["NoAnggota"] }}**</td> 
+                <td>{{ anggota["KodeAnggota"] }}</td>
+                <td>{{ anggota["NamaAnggota"] }}</td>
+                <td>{{ anggota["JenisAnggota"] }}</td>
+                <td>
+                    <a href="{{ url_for('edit_anggota', kode=anggota['KodeAnggota']) }}" class="btn-aksi" style="background-color: #007bff;">Edit</a>
+                    <a href="{{ url_for('hapus_anggota', kode=anggota['KodeAnggota']) }}" class="btn-aksi" style="background-color: #dc3545;">Hapus</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    /* Styling Dasar */
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .form-group input[type="text"], .form-group input[type="number"], .form-group select {
+        width: 35%; /* Menambahkan input[type="number"] */
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; position: sticky; top: 0; z-index: 1; }
+    
+    /* Styling Tombol Umum */
+    .btn { padding: 8px 12px; background-color: #5cb85c; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 10px; }
+    .btn-aksi { padding: 4px 8px; color: white; border: none; border-radius: 3px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 12px; margin-right: 5px; }
+    .btn:hover { background-color: #4cae4c; }
+
+    /* Styling Tombol Sorting */
+    .btn-sort {
+        padding: 6px 10px;
+        background-color: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-block;
+        margin-right: 5px;
+        font-size: 14px;
+    }
+    .btn-sort:hover {
+        background-color: #e0e0e0;
+    }
+    .btn-sort.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+        font-weight: bold;
+    }
+</style>
+
 {% endblock %}

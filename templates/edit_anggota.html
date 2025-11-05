@@ -1,0 +1,58 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2>✏️ Edit Anggota: {{ data['NamaAnggota'] }}</h2>
+
+<form method="POST">
+    <div class="form-group">
+        <label>No Anggota:</label>
+        <input type="text" value="{{ data['NoAnggota'] }}" readonly style="background-color: #f0f0f0;"><br>
+    </div>
+    <div class="form-group">
+        <label>Kode Anggota (Tidak dapat diubah):</label>
+        <input type="text" id="kode_anggota" value="{{ data['KodeAnggota'] }}" readonly style="background-color: #f0f0f0;"><br>
+    </div>
+    
+    <div class="form-group">
+        <label for="nama_anggota">Nama Anggota:</label>
+        <input type="text" id="nama_anggota" name="nama_anggota" value="{{ data['NamaAnggota'] }}" required><br>
+    </div>
+
+    <div class="form-group">
+        <label for="jenis_anggota">Jenis Anggota:</label>
+        <select id="jenis_anggota" name="jenis_anggota" required>
+            <option value="Anggota MAS" {% if data['JenisAnggota'] == 'Anggota MAS' %}selected{% endif %}>Anggota MAS</option>
+            <option value="Orang JMCare" {% if data['JenisAnggota'] == 'Orang JMCare' %}selected{% endif %}>Orang JMCare</option>
+            <option value="AkunInternal" {% if data['JenisAnggota'] == 'AkunInternal' %}selected{% endif %}>AkunInternal</option>
+        </select><br>
+    </div>
+
+    <input type="submit" class="btn" value="✅ Perbarui Anggota">
+    <a href="{{ url_for('tambah_anggota') }}" class="btn" style="background-color: #f0ad4e;">Batal</a>
+</form>
+
+<style>
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .form-group input[type="text"], .form-group select {
+        width: 35%; 
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .btn {
+        padding: 10px 15px;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 10px;
+    }
+    .btn[type="submit"] { background-color: #5cb85c; }
+    .btn[type="submit"]:hover { background-color: #4cae4c; }
+</style>
+
+{% endblock %}

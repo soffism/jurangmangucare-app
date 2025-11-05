@@ -17,6 +17,7 @@
             color: white;
             padding: 20px;
             box-sizing: border-box;
+            overflow-y: auto; /* Tambahkan ini agar sidebar bisa discroll */
         }
 
         .sidebar h2 {
@@ -36,6 +37,15 @@
         .sidebar a:hover {
             background-color: #34495e;
         }
+        
+        /* Gaya baru untuk judul bagian menu */
+        .menu-header {
+            font-weight: bold;
+            color: #bdc3c7;
+            margin: 15px 0 5px 0;
+            padding: 5px 8px;
+            border-bottom: 1px solid #34495e;
+        }
 
         .main-content {
             flex: 1;
@@ -47,110 +57,110 @@
         h2 {
             margin-top: 0;
         }
+        
+        /* Tambahkan style untuk pesan flash */
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th, td {
-            padding: 8px 12px;
-            border: 1px solid #ccc;
-        }
-
-        th {
-            background-color: #eee;
-        }
-
-        .btn {
-            padding: 8px 12px;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-
-        .btn:hover {
-            background-color: #2980b9;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: bold;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-
-        .entitas-info {
-            margin-bottom: 15px;
-            font-size: 14px;
-            color: #ccc;
-        }
-
-        .sidebar form {
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
+    <div class="sidebar">
+        <h2>Admin Panel</h2>
+        
+        <!-- Info Entitas & User -->
+        <p style="font-size: 14px; margin-bottom: 20px; color: #ecf0f1;">
+            {% if session.get('user') == 'admin' %}
+                ADMIN 
+            {% else %}
+                User: {{ session.get('user') }} 
+            {% endif %}
+            <br>
+            Entitas: 
+            {% if session.get('entitas') == 'dkm' %}
+                **DKM Ash Shiddiq**
+            {% else %}
+                **JurangmanguCare**
+            {% endif %}
+        </p>
+        <hr style="border-top: 1px solid #34495e; margin: 10px 0;">
 
-<div class="sidebar"> 
-    <h2>📊 Menu</h2>
+        <!-- 1. Menu Admin Inti (Tampil HANYA jika Admin, terlepas dari entitas) -->
+        {% if session.get('user') == 'admin' %}
+            <div class="menu-header">Menu Admin</div>
+            <a href="{{ url_for('index') }}">🏠 Beranda</a>
+            <a href="{{ url_for('rekapakhir') }}">🏆 Rekap Akhir</a>
+            <a href="{{ url_for('index_viewrekap') }}">📊 Rekap Transaksi Anggota</a>
+            
+            <a href="{{ url_for('tambah') }}">➕ Tambah Transaksi</a>
+            <a href="{{ url_for('tambah_anggota') }}">👥 Tambah Anggota</a>
+            <a href="{{ url_for('tambah_jenis') }}">🧾 Tambah Jenis Transaksi</a>
 
-    <!-- Info entitas aktif -->
-    {% if session.get('entitas') %}
-        <div class="entitas-info">
-            Aktif: <strong>{{ session['entitas'] | upper }}</strong>
-        </div>
-    {% endif %}
+            <!-- START: Form Ganti Entitas (DIKEMBALIKAN) -->
+            <form method="POST" action="{{ url_for('ganti_entitas_proses') }}" style="margin-top: 15px; margin-bottom: 10px;">
+                <label for="entitas" style="font-size: 14px; margin-bottom: 5px; color: #ecf0f1; display: block;">
+                    🔄 Ganti Entitas:
+                </label>
+                <select name="entitas" onchange="this.form.submit()" style="width: 100%; padding: 5px; border-radius: 3px; border: none; color: #2c3e50;">
+                    <option value="jurangmangucare" {% if session.get('entitas') == 'jurangmangucare' %}selected{% endif %}>Jurangmangu Care</option>
+                    <option value="dkm" {% if session.get('entitas') == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
+                </select>
+            </form>
+            <!-- END: Form Ganti Entitas -->
 
-    <!-- Form ganti entitas (hanya admin) -->
-    {% if session.get('user') == 'admin' %}
-    <form method="POST" action="{{ url_for('rekapakhir') }}">
-        <label for="entitas" style="font-size:14px;">Ganti Entitas:</label>
-        <select name="entitas" onchange="this.form.submit()" style="width:100%;">
-            <option value="jurangmangucare" {% if session.get('entitas') == 'jurangmangucare' %}selected{% endif %}>Jurangmangu Care</option>
-            <option value="dkm" {% if session.get('entitas') == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
-        </select>
-    </form>
-    {% endif %}
-
-    <!-- Menu untuk ADMIN -->
-    {% if session.get('user') == 'admin' %}
-        <a href="{{ url_for('rekapakhir') }}">🏠 Dashboard (Rekap Akhir)</a>
-        <a href="{{ url_for('index_viewrekap') }}">📄 Rekap Transaksi</a>
-        {% if session.get('entitas') == 'dkm' %}
-        <a href="#" style="color:gray; pointer-events: none; cursor: default;" title="Tidak tersedia untuk entitas DKM">📋 Pivot Transaksi (nonaktif)</a>
-        {% else %}
-            <a href="{{ url_for('pivot_transaksi') }}">📋 Pivot Transaksi</a>
+            <hr style="border-top: 1px solid #34495e; margin: 10px 0;">
         {% endif %}
-        <a href="{{ url_for('tambah') }}">➕ Tambah Transaksi</a>
-        <a href="{{ url_for('tambah_anggota') }}">👥 Tambah Anggota</a>
-        <a href="{{ url_for('tambah_jenis') }}">🧾 Tambah Jenis Transaksi</a>
-    {% else %}
-    <!-- Menu untuk ANGGOTA -->
-        <a href="{{ url_for('transaksi_user') }}">📄 Transaksi Saya</a>
-        <a href="{{ url_for('rekapanggota') }}">📊 Rekap Transaksi</a>
-    {% endif %}
 
-    <a href="{{ url_for('logout') }}">🚪 Logout</a>
-</div>
+        <!-- 2. Menu Laporan Keuangan DKM (Tampil jika Admin ATAU User DKM) -->
+        {% if session.get('entitas') == 'dkm' %}
+            <div class="menu-header">Laporan Keuangan DKM</div>
+            <a href="{{ url_for('lap_posisi_keuangan') }}" title="Laporan Posisi Keuangan">⚖️ Laporan Posisi Keuangan</a>
+            <a href="{{ url_for('lap_aktivitas') }}" title="Laporan Aktivitas">📈 Laporan Aktivitas</a>
+            <a href="{{ url_for('saldo_akun') }}" title="Laporan Saldo Akun">💰 Saldo Akun (Khusus Admin)</a>
+            <a href="{{ url_for('buku_besar') }}" title="Laporan Buku Besar">📒 Buku Besar (Khusus Admin)</a>
+            
+            {% if session.get('user') != 'admin' %}
+                <!-- Jika User DKM (Non-Admin), berikan menu Transaksi Saya juga -->
+                <div class="menu-header">Transaksi Saya</div>
+                <a href="{{ url_for('transaksi_user') }}">💰 Riwayat Transaksi Saya</a>
+            {% endif %}
+            
+        <!-- 3. Menu Transaksi JMCare (Tampil jika Admin JMCare ATAU User JMCare) -->
+        {% else %} 
+            {% if session.get('user') == 'admin' %}
+                <div class="menu-header">Menu JMCare Admin</div>
+                <a href="{{ url_for('pivot_transaksi') }}">📋 Pivot Transaksi</a>
+                <a href="{{ url_for('buku_besar') }}" style="color:gray; pointer-events: none; cursor: default;" title="Hanya tersedia di DKM">📒 Buku Besar (nonaktif)</a>
+                <!-- Link Tambah Transaksi sudah ada di Blok 1 -->
+            {% else %}
+                <div class="menu-header">Menu JMCare User</div>
+                <a href="{{ url_for('transaksi_user') }}">💰 Riwayat Transaksi Saya</a>
+                <a href="{{ url_for('index_viewrekap') }}">📊 Rekap Transaksi</a>
+            {% endif %}
+        {% endif %}
+        
+        <hr style="border-top: 1px solid #34495e; margin: 10px 0;">
+        <a href="{{ url_for('logout') }}" style="background-color: #e74c3c; padding: 10px; text-align: center;">🚪 Keluar</a>
 
-<div class="main-content">
-    {% block content %}
-    {% endblock %}
-</div>
+    </div>
+
+    <div class="main-content">
+        <!-- Tampilkan Pesan Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Konten Halaman -->
+        {% block content %}{% endblock %}
+    </div>
 
 </body>
 </html>

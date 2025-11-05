@@ -1,0 +1,125 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<h2 style="color: #2c3e50; border-bottom: 2px solid #34495e; padding-bottom: 10px;">📊 Rekap Transaksi Anggota ({{ session.get('entitas') | upper }})</h2>
+
+<style>
+    /* Styling Dasar */
+    .form-control-group { 
+        display: flex; 
+        gap: 20px; 
+        margin-bottom: 20px;
+        align-items: center; 
+    }
+    .form-control-group label { margin: 0; font-weight: bold; }
+    .form-control-group select, .form-control-group button { padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+    .btn-filter { background-color: #3498db; color: white; cursor: pointer; }
+    .btn-filter:hover { background-color: #2980b9; }
+
+    /* 1. Styling Dasar Tabel (Diambil dari transaksi_user.html) */
+    .transaksi-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 14px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 8px; 
+        overflow: hidden;
+    }
+    
+    /* 2. Styling Header */
+    .transaksi-table thead th {
+        background-color: #34495e; /* Warna header yang solid */
+        color: white;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    /* 3. Styling Sel Data */
+    .transaksi-table tbody td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #ecf0f1; /* Garis tipis antar baris */
+        vertical-align: middle;
+    }
+    .transaksi-table tbody tr:last-child td { border-bottom: none; }
+    .transaksi-table tbody tr:nth-child(even) { background-color: #f8f8f8; }
+
+    /* 4. Teks Numerik */
+    .numeric { text-align: right; }
+    .negatif { color: #e74c3c; font-weight: bold; } /* Warna merah untuk nilai negatif */
+</style>
+
+{# FORM UNTUK FILTER ENTITAS (Dipastikan selalu ada) #}
+<form method="POST" class="form-control-group" style="margin-bottom: 10px;">
+    <label for="entitas">Pilih Entitas:</label>
+    <select name="entitas" id="entitas" onchange="this.form.submit()" style="width: 200px;" required>
+        <option value="jurangmangucare" {% if session.get('entitas', 'jurangmangucare') == 'jurangmangucare' %}selected{% endif %}>JurangmanguCare</option>
+        <option value="dkm" {% if session.get('entitas') == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
+    </select>
+</form>
+
+{# FORM UNTUK FILTER ANGGOTA (Hanya Tampil untuk Admin) #}
+{% if session['user'] == 'admin' %}
+<form method="POST" class="form-control-group">
+    <input type="hidden" name="entitas" value="{{ session.get('entitas', 'jurangmangucare') }}">
+    <label for="kode_anggota">Filter Anggota:</label>
+    <select name="kode_anggota" id="kode_anggota" style="width: 300px;">
+        <option value="">-- Tampilkan Semua Anggota --</option>
+        {# Menggunakan anggota_list yang dikirim dari app.py #}
+        {% for anggota in anggota_list %}
+            <option value="{{ anggota['KodeAnggota'] }}" {% if anggota['KodeAnggota'] == kode %}selected{% endif %}>
+                {{ anggota['KodeAnggota'] }} - {{ anggota['NamaAnggota'] }}
+            </option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn-filter">Tampilkan Data</button>
+</form>
+{% endif %}
+
+
+<div class="table-responsive">
+    <table class="transaksi-table">
+        <thead>
+            <tr>
+                <th style="width: 10%;">Tanggal</th>
+                <th style="width: 10%;">Kode Anggota</th>
+                <th style="width: 20%;">Nama Anggota</th>
+                <th style="width: 10%;">Jenis Transaksi</th>
+                <th style="width: 35%;">Uraian</th>
+                <th class="numeric" style="width: 15%;">Jumlah (Rp)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {# PERBAIKAN: Tambahkan | default(0) untuk mengatasi TypeError saat row["Jumlah"] adalah None/Undefined #}
+            {% for row in data %} 
+            {% set jumlah_nilai = row["Jumlah"] | default(0) %}
+            {% set jumlah_display = "{:,.2f}".format(jumlah_nilai | abs) %}
+            {% set class_negatif = 'negatif' if jumlah_nilai < 0 else '' %}
+            
+            <tr>
+                <td>{{ row["Tanggal"] }}</td>
+                <td>{{ row["KodeAnggota"] }}</td>
+                <td>{{ row["NamaAnggota"] }}</td>
+                <td>{{ row["JenisTransaksi"] }}</td>
+                <td>{{ row["Uraian"] }}</td>
+                <td class="numeric {{ class_negatif }}">
+                    {% if jumlah_nilai < 0 %}
+                        ({{ jumlah_display }})
+                    {% else %}
+                        {{ jumlah_display }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; font-style: italic; padding: 20px;">
+                    Tidak ada data transaksi yang ditemukan.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

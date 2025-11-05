@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Keuangan - User</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        header { background-color: #007bff; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 24px; }
+        nav ul { list-style: none; padding: 0; margin: 0; display: flex; }
+        nav ul li a { color: white; text-decoration: none; padding: 8px 15px; display: block; border-radius: 4px; transition: background-color 0.3s; }
+        nav ul li a:hover { background-color: #0056b3; }
+        .container { padding: 20px; max-width: 1200px; margin: auto; }
+        .user-info { font-size: 14px; margin-right: 20px; }
+        .logout-btn { background: #dc3545; padding: 5px 10px; border-radius: 4px; text-decoration: none; color: white; }
+        .logout-btn:hover { background: #c82333; }
+        /* Style untuk pesan Flash */
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .flash.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Aplikasi Keuangan</h1>
+        <nav>
+            <ul>
+                <!-- Menu untuk User Biasa -->
+                {% if session.get('entitas') == 'dkm' %}
+                    <li><a href="{{ url_for('lap_posisi_keuangan') }}">💰 Posisi Keuangan</a></li>
+                    <li><a href="{{ url_for('lap_aktivitas') }}">📊 Laporan Aktivitas</a></li>
+                    <li><a href="{{ url_for('transaksi_user') }}">✍️ Transaksi Saya</a></li>
+                {% else %}
+                    <!-- Menu untuk JMCare (asumsi) -->
+                    <li><a href="{{ url_for('transaksi_jmcare') }}">💰 Transaksi JMCare</a></li>
+                {% endif %}
+                
+                <!-- Info User dan Logout -->
+                <span class="user-info">
+                    Anda login sebagai: <strong>{{ session.get('user') }}</strong>
+                    ({% if session.get('entitas') == 'dkm' %}DKM Ash Shiddiq{% else %}JurangmanguCare{% endif %})
+                </span>
+                <li><a href="{{ url_for('logout') }}" class="logout-btn">Keluar</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- Tampilkan Pesan Flash (Penting untuk notifikasi error akses) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

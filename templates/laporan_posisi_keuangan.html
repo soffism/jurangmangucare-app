@@ -1,0 +1,156 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<h2>💵 Laporan Posisi Keuangan / Neraca ({{ session.get('entitas') | upper }})</h2>
+
+<style>
+    /* Styling Dasar */
+    .la-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 20px; 
+        font-size: 16px; /* Font DIBESARKAN */
+    }
+    /* Default cell alignment */
+    .la-table th, .la-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    
+    /* Header Kelompok */
+    .header-group { background-color: #cceeff; font-weight: bold; }
+    
+    /* Baris Rincian */
+    .detail-row { background-color: #f9f9f9; }
+    .master-lookup { color: #555; font-style: italic; font-size: 0.9em; }
+    
+    /* Baris Total */
+    .total-row { font-weight: bold; background-color: #e6e6e6; }
+    
+    /* Angka - Dipakai untuk perataan kanan pada isi sel */
+    /* Menggunakan !important untuk memastikan perataan kanan */
+    .numeric { 
+        text-align: right !important; 
+        font-family: monospace; 
+    }
+    
+    /* Baris Akhir Neraca */
+    .balance-row { 
+        font-weight: bold; 
+        background-color: #a0d4ff; /* Warna biru lebih lembut untuk Balance */
+        border-top: 3px double #333;
+    }
+</style>
+
+{# PERBAIKAN KRITIS: Mengganti kunci grouping dari 'Kelompok' menjadi 'GrupAkun' sesuai data Anda #}
+{% set groups = data | default([]) | list | groupby('GrupAkun') %}
+
+{# Menggunakan NAMESPACE untuk variabel total #}
+{% set ns = namespace(total_aset=0, total_liabilitas_ekuitas=0) %}
+
+{# ========================= TABEL UTAMA NERACA ========================= #}
+<table class="la-table">
+    <thead>
+        <tr class="total-row">
+            <th style="width: 25%;">Kode Akun</th>
+            {# Kolom ini mungkin tidak terisi jika VIEW SQL Anda hanya menghasilkan GrupAkun, Rincian, dan SaldoNet #}
+            <th style="width: 25%;">Deskripsi Akun 1 (Anggota)</th>
+            <th style="width: 25%;">Deskripsi Akun 2 (Jenis Transaksi)</th> 
+            {# Header "Jumlah" rata kanan #}
+            <th class="numeric" style="width: 25%;">Jumlah</th> 
+        </tr>
+    </thead>
+    <tbody>
+        
+        {# Menampilkan pesan jika data kosong #}
+        {% if data | length == 0 %}
+        <tr>
+            <td colspan="4" style="text-align: center; color: red; font-weight: bold;">
+                ❌ Data Posisi Keuangan tidak ditemukan atau View SQL bermasalah.
+            </td>
+        </tr>
+        {% endif %}
+
+        {# ========================= ASET ========================= #}
+        <tr class="header-group">
+            <td colspan="4">A. ASET</td>
+        </tr>
+        
+        {# Iterasi untuk Grup ASET #}
+        {% for group_name, items in groups %}
+            {% if group_name == 'ASET' %}
+                {% for item in items %}
+                    <tr class="detail-row">
+                        <td>{{ item['Rincian'] | default('') }}</td>
+                        {# KARENA DATA ANDA HANYA ADA GrupAkun dan Rincian, Kunci 'NamaAnggota' dan 'JenisTransaksi' AKAN KOSONG, tapi tidak error #}
+                        <td class="master-lookup">{{ item['NamaAnggota'] | default('') }}</td> 
+                        <td class="master-lookup">{{ item['JenisTransaksi'] | default('') }}</td>
+                        <td class="numeric">
+                            {% set nilai_aset = item['SaldoNet'] | default(0) %}
+                            {{ "{:,.2f}".format(nilai_aset) }}
+                            {% set ns.total_aset = ns.total_aset + nilai_aset %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+        <tr class="total-row" style="border-top: 2px solid #333;">
+            <td colspan="3" class="numeric">TOTAL ASET</td> 
+            <td class="numeric"><strong>{{ "{:,.2f}".format(ns.total_aset) }}</strong></td>
+        </tr>
+
+
+        {# ========================= LIABILITAS & EKUITAS ========================= #}
+        <tr class="header-group" style="border-top: 5px solid #0056b3;">
+            <td colspan="4">B. LIABILITAS & EKUITAS</td>
+        </tr>
+
+        {% for group_name, items in groups %}
+            {# KARENA VIEW SQL ANDA MENGHASILKAN EKUITAS_PENDAPATAN dan EKUITAS_BEBAN, kita pisahkan logic grouping-nya #}
+            {% if group_name.startswith('LIABILITAS') or group_name.startswith('EKUITAS') %}
+                
+                {# Sub-header untuk Liabilitas dan Ekuitas #}
+                <tr class="header-group" style="background-color: #e3f2fd; font-weight: normal;">
+                    {# Menampilkan nama grup yang lebih rinci dari data Anda: EKUITAS_PENDAPATAN, EKUITAS_BEBAN #}
+                    <td colspan="4">{{ group_name | replace('_', ' / ') }}</td>
+                </tr>
+
+                {% for item in items %}
+                    <tr class="detail-row">
+                        <td>{{ item['Rincian'] | default('') }}</td>
+                        {# Kunci ini akan kosong, tapi dilindungi default('') #}
+                        <td class="master-lookup">{{ item['NamaAnggota'] | default('') }}</td> 
+                        <td class="master-lookup">{{ item['JenisTransaksi'] | default('') }}</td>
+                        <td class="numeric">
+                            {% set nilai_liabilitas_ekuitas = item['SaldoNet'] | default(0) %} 
+                            {{ "{:,.2f}".format(nilai_liabilitas_ekuitas | abs) }}
+                            {# Catatan: Total Liabilitas & Ekuitas harus menjumlahkan nilai negatif (kredit) dan positif (debit) #}
+                            {% set ns.total_liabilitas_ekuitas = ns.total_liabilitas_ekuitas + nilai_liabilitas_ekuitas %} 
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+
+        <tr class="total-row" style="border-top: 2px solid #333;">
+            <td colspan="3" class="numeric">TOTAL LIABILITAS & EKUITAS</td>
+            <td class="numeric"><strong>{{ "{:,.2f}".format(ns.total_liabilitas_ekuitas | abs) }}</strong></td>
+        </tr>
+
+        {# ========================= KESEIMBANGAN (BALANCE) ========================= #}
+        <tr class="balance-row">
+            {# Kolom Label Balance rata kanan #}
+            <td colspan="3" class="numeric">TOTAL ASET vs TOTAL LIABILITAS & EKUITAS</td>
+            <td class="numeric">
+                {% set selisih = ns.total_aset - (ns.total_liabilitas_ekuitas | abs) %}
+                {# Jika selisih mendekati nol (misalnya kurang dari 0.01), dianggap Balance #}
+                {% if selisih | abs < 0.01 %}
+                    <span style="color: green;">BALANCE</span>
+                {% else %}
+                    <span style="color: red;">SELISIH: {{ "{:,.2f}".format(selisih) }}</span>
+                {% endif %}
+            </td>
+        </tr>
+
+    </tbody>
+</table>
+
+<div style="clear: both;"></div>
+
+{% endblock %}

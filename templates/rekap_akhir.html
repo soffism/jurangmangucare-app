@@ -1,38 +1,139 @@
 {% extends "base_admin.html" %}
-{% block content %}
-<h2>Laporan Rekap Akhir Transaksi</h2>
 
-<form method="POST">
-    <label for="entitas">Pilih Entitas:</label>
-    <select name="entitas" id="entitas" onchange="this.form.submit()">
-        <option value="jurangmangucare" {% if session['entitas'] == 'jurangmangucare' %}selected{% endif %}>Jurangmangu Care</option>
-        <option value="dkm" {% if session['entitas'] == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
-    </select>
-</form>
+{% block content %}
+<h2>📊 Laporan Rekap Akhir Transaksi ({{ session.get('entitas') | upper }}) - Model Single Entry</h2>
 
 <style>
-    th.total, td.total { text-align: right; }
-    .export-button { margin-top: 15px; margin-bottom: 15px; }
+    /* Styling Dasar Tabel */
+    .rekap-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    /* Styling Header */
+    .rekap-table thead th {
+        background-color: #34495e; /* Dark Blue Header */
+        color: white;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    /* Styling Sel Data */
+    .rekap-table tbody td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #ecf0f1;
+        vertical-align: middle;
+    }
+
+    /* Styling Baris Ganjil/Genap */
+    .rekap-table tbody tr:nth-child(even) {
+        background-color: #f7f9fc;
+    }
+
+    /* Styling Angka dan Total */
+    .numeric {
+        text-align: right !important;
+        font-family: monospace;
+    }
+
+    /* Styling untuk Baris Total (Grand Total) */
+    /* Diubah agar sesuai dengan baris Saldo Akhir */
+    .grand-total-row {
+        background-color: #f39c12; /* Warna Oranye */
+        color: white;
+        font-weight: bold;
+        border-top: 3px double #333; /* Garis ganda di atas total */
+    }
+    .grand-total-row td {
+        padding: 15px 15px;
+    }
+
+    /* Highlight Baris saat Hover */
+    .rekap-table tbody tr:hover {
+        background-color: #e9f2ff;
+    }
+
+    /* Styling Tombol Ekspor */
+    .export-button {
+        margin-bottom: 15px;
+    }
+    .btn-export {
+        background-color: #27ae60; /* Hijau */
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+    .btn-export:hover {
+        background-color: #2ecc71;
+    }
+
 </style>
 
+{% set ns = namespace(saldo_akhir=0) %}
+{% set is_dkm = session.get('entitas') == 'dkm' %}
+
 <div class="export-button">
-    <a href="{{ url_for('export_rekapakhir') }}" class="btn">📥 Ekspor ke Excel</a>
+    {# Menggunakan route universal '/rekapakhir/export' #}
+    <a href="{{ url_for('export_rekapakhir') }}" class="btn-export">📥 Ekspor ke Excel</a>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Jenis Transaksi</th>
-            <th class="total">Total</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for row in data %}
-        <tr>
-            <td>{{ row["JenisTransaksi"] }}</td>
-            <td class="total">{{ "{:,}".format(row["Total"]) }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-responsive">
+    <table class="rekap-table">
+        <thead>
+            <tr>
+                {# Tampilkan Kategori Transaksi HANYA untuk DKM #}
+                {% if is_dkm %}
+                    <th style="width: 30%;">Kategori Transaksi</th>
+                {% endif %}
+                <th style="width: {% if is_dkm %}45%{% else %}75%{% endif %};">Jenis Transaksi</th>
+                <th class="numeric" style="width: 25%;">Total (Rp)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+                {# **PERBAIKAN UTAMA**: Cek apakah ini baris Saldo Akhir #}
+                {% if row["JenisTransaksi"] == "Saldo Akhir" %}
+                    {# Simpan nilai Saldo Akhir dan JANGAN tampilkan di tbody #}
+                    {% set ns.saldo_akhir = row["Total"] %}
+                {% else %}
+                    {# Tampilkan baris transaksi biasa #}
+                    <tr>
+                        {# Tampilkan Kategori Transaksi HANYA untuk DKM #}
+                        {% if is_dkm %}
+                            <td>{{ row["KategoriTransaksi"] }}</td>
+                        {% endif %}
+                        <td>{{ row["JenisTransaksi"] }}</td>
+                        <td class="numeric">{{ "{:,.2f}".format(row["Total"]) }}</td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="grand-total-row">
+                {# Colspan = 1 (untuk Jenis Transaksi) + 1 (untuk Total) + (1 jika DKM) #}
+                {% set colspan_value = 1 %}
+                {% if is_dkm %}
+                    {% set colspan_value = 2 %}
+                {% endif %}
+                <td colspan="{{ colspan_value }}" style="text-align: right; font-size: 1.1em;">SALDO AKHIR</td>
+                <td class="numeric" style="font-size: 1.1em;">
+                    {# **PERBAIKAN**: Gunakan nilai Saldo Akhir yang sudah disimpan #}
+                    {{ "{:,.2f}".format(ns.saldo_akhir) }}
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
 {% endblock %}

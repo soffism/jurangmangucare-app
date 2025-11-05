@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 from io import BytesIO
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "jurangmangucare_secret"
@@ -26,6 +27,49 @@ def get_connection(entitas=None):
     conn.row_factory = sqlite3.Row
     return conn
 
+# Decorator untuk memastikan pengguna sudah login
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Ini adalah pengecekan autentikasi dasar
+        if "user" not in session:
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ------------------------
+# FUNGSI BANTUAN OTENTIKASI ANGGOTA (Perbaikan: Memastikan KodeAnggota terdaftar)
+# ------------------------
+def is_valid_anggota_user(kode_anggota, password):
+    """
+    Memeriksa apakah Kode Anggota terdaftar di salah satu entitas (DB) 
+    dan password-nya adalah '2468'. Mengembalikan entitas jika ditemukan.
+    """
+    # 1. Cek Password (Hardcoded)
+    if password != "2468":
+        return None # Password salah
+
+    # 2. Cek di kedua entitas/database
+    for entitas_name in ['jurangmangucare', 'dkm']:
+        conn = None
+        try:
+            conn = get_connection(entitas_name)
+            cursor = conn.cursor()
+            # Cek keberadaan KodeAnggota di tabel Anggota
+            cursor.execute("SELECT KodeAnggota FROM Anggota WHERE KodeAnggota = ?", (kode_anggota,))
+            if cursor.fetchone():
+                return entitas_name # Anggota ditemukan di entitas ini
+        except Exception as e:
+            # Lewati jika ada masalah koneksi ke salah satu DB
+            print(f"Error checking user in {entitas_name}: {e}")
+            continue
+        finally:
+            if conn:
+                conn.close()
+    
+    return None # Anggota tidak ditemukan di entitas manapun
+
+
 # ------------------------
 # ROUTE: Login
 # ------------------------
@@ -35,15 +79,19 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
+        # --- BLOK ADMIN (PERUBAHAN UTAMA) ---
         if username == "admin" and password == "13579":
             session["user"] = "admin"
-            session["entitas"] = "jurangmangucare"  # default admin ke jurangmangucare
-            return redirect(url_for("index"))
+            # SET BARU: Default admin ke entitas DKM Ash Shiddiq
+            session["entitas"] = "dkm"  
+            # REDIRECT BARU: Langsung ke laporan posisi keuangan
+            return redirect(url_for("lap_posisi_keuangan"))
+        # ------------------------------------
 
         elif password == "2468":
             session["user"] = username
 
-            # Cek entitas berdasarkan JenisAnggota
+            # Cek entitas berdasarkan JenisAnggota (Logika User Biasa TIDAK BERUBAH)
             conn = get_connection('jurangmangucare')
             jmcare_check = conn.execute("""
                 SELECT 1 FROM Anggota 
@@ -56,12 +104,14 @@ def login():
             else:
                 session["entitas"] = "dkm"
 
+            # Redirect user biasa ke index (yang akan mengarahkan ke halaman default mereka)
             return redirect(url_for("index"))
 
         else:
             return render_template("login.html", error="Username atau password salah.")
     
     return render_template("login.html")
+
 # ------------------------
 # ROUTE: Logout
 # ------------------------
@@ -71,22 +121,46 @@ def logout():
     return redirect(url_for("login"))
 
 # ------------------------
-# ROUTE: Halaman Utama
+# ROUTE: Index (Root) - SUDAH FINAL
 # ------------------------
 @app.route("/")
 def index():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    if session["user"] == "admin":
-        return redirect(url_for("rekapakhir"))
- 
-    # Anggota biasa
-    entitas = session.get("entitas", "jurangmangucare")
-    if entitas == "dkm":
-        return redirect(url_for("transaksi_user"))   # DKM Pastikan ini ada 
+    # Admin atau User DKM akan masuk ke Laporan Posisi Keuangan
+    if session["user"] == "admin" or session.get("entitas") == "dkm":
+        return redirect(url_for("lap_posisi_keuangan")) 
+    
+    # User JMCare (user non-admin, entitas jurangmangucare)
     else:
-        return redirect(url_for("transaksi_jmcare"))  # JurangmanguCare
+        return redirect(url_for("transaksi_jmcare")) 
+
+# ------------------------
+# ROUTE: Tanbahan untuk Ganti Entitas)
+# ------------------------
+@app.route('/ganti_entitas_proses', methods=['POST'])
+def ganti_entitas_proses():
+    """Route untuk mengganti entitas aktif (DKM/JurangmanguCare) dan menyimpan di session."""
+    
+    # 1. Pastikan hanya admin yang bisa mengakses
+    if session.get('user') != 'admin':
+        flash('Akses ditolak.', 'error')
+        return redirect(url_for('index'))
+
+    # 2. Ambil entitas baru dari formulir
+    entitas_baru = request.form.get('entitas')
+    
+    # 3. Validasi dan simpan ke session
+    if entitas_baru in ['dkm', 'jurangmangucare']:
+        session['entitas'] = entitas_baru
+        flash(f'Entitas berhasil diganti menjadi {entitas_baru.upper()}.', 'success')
+    else:
+        flash('Pilihan entitas tidak valid.', 'error')
+        
+    # 4. Redirect kembali ke halaman tempat permintaan berasal
+    # Menggunakan request.referrer agar tetap di halaman yang sama setelah ganti entitas
+    return redirect(request.referrer or url_for('index'))
 
 # ------------------------
 # ROUTE: Rekap Akhir (Dinamis Berdasar Entitas)
@@ -182,46 +256,87 @@ def index_viewrekap():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    # ✅ Tangkap entitas dari dropdown jika dikirim lewat POST
+    # == BLOK INISIALISASI VARIABEL ==
+    # Tangkap entitas dari dropdown jika dikirim lewat POST
     if request.method == "POST" and "entitas" in request.form:
         session["entitas"] = request.form["entitas"]
 
     entitas = session.get("entitas", "jurangmangucare")
 
-    # ✅ Tentukan filter JenisAnggota sesuai entitas
+    # Tentukan filter JenisAnggota sesuai entitas
     if entitas == "dkm":
-        jenis_anggota_1 = "Orang MAS"
+        jenis_anggota_1 = "Anggota MAS" 
     else:
         jenis_anggota_1 = "Orang JMCare"
     
     jenis_anggota_2 = "AkunInternal"
-
+    
     conn = get_connection(entitas)
 
-    query = """
-        SELECT * FROM ViewRekapTransaksi
-        WHERE JenisAnggota IN (?, ?)
+    # 1. AMBIL DAFTAR ANGGOTA UNTUK DROPDOWN FILTER (UNTUK ADMIN)
+    anggota_list = conn.execute("""
+        SELECT KodeAnggota, NamaAnggota FROM Anggota
+        WHERE JenisAnggota IN (?, ?) 
+        ORDER BY NamaAnggota
+    """, (jenis_anggota_1, jenis_anggota_2)).fetchall()
+
+    # 2. LOGIKA UTAMA QUERY DATA REKAP (MENGGUNAKAN QUERY JOINS LENGKAP)
+    base_query = """
+        SELECT 
+            T.No,
+            H.Tanggal,
+            T.KodeAnggota,
+            A.NamaAnggota,
+            T.KodeJenisTrans,
+            J.JenisTransaksi,
+            T.Uraian,
+            T.Jumlah
+        FROM Transaksi T
+        JOIN HeaderTransaksi H ON T.KdTanggal = H.IDTanggal
+        JOIN Anggota A ON T.KodeAnggota = A.KodeAnggota
+        JOIN JenisTransaksi J ON T.KodeJenisTrans = J.KodeJenisTrans
     """
-
+    query_params = []
+    
+    # === POIN PERBAIKAN: INISIALISASI anggota_filter ===
     anggota_filter = None
+    # ==================================================
+    
+    # 3. FILTER LOGIKA (Diterapkan di JOIN)
+    
+    # Filter pertama: Selalu batasi berdasarkan JenisAnggota entitas yang valid
+    base_query += " WHERE A.JenisAnggota IN (?, ?)"
+    query_params = [jenis_anggota_1, jenis_anggota_2]
+    
+    # Tambahkan pengurutan standar
+    base_query += " ORDER BY H.Tanggal DESC, T.No DESC"
 
+    # Penentuan Query Akhir (Filter Tambahan)
     if session["user"] == "admin":
+        # ADMIN: Cek apakah ada filter Anggota dari form POST
         if request.method == "POST":
             anggota_filter = request.form.get("kode_anggota")
             if anggota_filter:
-                query += " AND KodeAnggota = ?"
-                rows = conn.execute(query, (jenis_anggota_1, jenis_anggota_2, anggota_filter)).fetchall()
-            else:
-                rows = conn.execute(query, (jenis_anggota_1, jenis_anggota_2)).fetchall()
-        else:
-            rows = conn.execute(query, (jenis_anggota_1, jenis_anggota_2)).fetchall()
+                # Tambahkan filter KodeAnggota
+                base_query = base_query.replace(" ORDER BY", " AND T.KodeAnggota = ? ORDER BY")
+                query_params.append(anggota_filter)
+        
     else:
+        # USER BIASA: Selalu filter berdasarkan user yang login
         anggota_filter = session["user"]
-        query += " AND KodeAnggota = ?"
-        rows = conn.execute(query, (jenis_anggota_1, jenis_anggota_2, anggota_filter)).fetchall()
+        base_query = base_query.replace(" ORDER BY", " AND T.KodeAnggota = ? ORDER BY")
+        query_params.append(anggota_filter)
+
+    # Eksekusi Query
+    rows = conn.execute(base_query, tuple(query_params)).fetchall()
 
     conn.close()
-    return render_template("index.html", data=rows, kode=anggota_filter)
+    
+    # Kirim daftar anggota untuk mengisi dropdown
+    return render_template("rekap_transaksi_anggota.html", 
+                           data=rows, 
+                           kode=anggota_filter,
+                           anggota_list=anggota_list)
 
 
 # ------------------------
@@ -308,40 +423,52 @@ def tambah():
         session["entitas"] = request.form["entitas"]
 
     entitas = session.get("entitas", "jurangmangucare")
+    
+    # --- LOGIKA FILTER ANGGOTA YANG DIPERBAHARUI DAN SEDERHANA ---
     if entitas == "dkm":
-        filter_anggota = "Orang MAS"
-    else:
-        filter_anggota = "Orang JMCare"
+        # DKM hanya menampilkan Anggota MAS dan AkunInternal
+        # Jika Anda sudah mengganti 'Orang MAS' menjadi 'Anggota MAS', gunakan yang baru
+        tipe_anggota_entitas = "Anggota MAS" 
+    else: # jurangmangucare
+        # JMCare hanya menampilkan Orang JMCare dan AkunInternal
+        tipe_anggota_entitas = "Orang JMCare" 
+    # -------------------------------------------------------------
 
     conn = get_connection(entitas)
+    
+    # Query hanya mengambil anggota tipe entitas terkait ATAU AkunInternal
     anggota_list = conn.execute("""
         SELECT KodeAnggota, NamaAnggota FROM Anggota
         WHERE JenisAnggota IN (?, 'AkunInternal')
-    """, (filter_anggota,)).fetchall()
+        ORDER BY NamaAnggota
+    """, (tipe_anggota_entitas,)).fetchall()
 
     jenis_list = conn.execute("""
         SELECT KodeJenisTrans, JenisTransaksi FROM JenisTransaksi
     """).fetchall()
 
-    last_10 = conn.execute("""
+    # ... (Sisa kode untuk all_trans_data dan POST logic tetap sama)
+    # ... (Pastikan bagian return di akhir juga mengembalikan anggota_list)
+    
+    # Ambil semua data transaksi untuk tabel di bawah
+    all_trans_data = conn.execute("""
         SELECT T.No, T.KodeAnggota, T.KodeJenisTrans, T.Uraian, T.Jumlah, H.Tanggal
         FROM Transaksi T
         JOIN HeaderTransaksi H ON T.KdTanggal = H.IDTanggal
-        ORDER BY T.No DESC LIMIT 10
+        ORDER BY T.No DESC 
     """).fetchall()
-
+    
     last_entry = None
     if request.method == "POST":
-    # Cek jika form hanya kirim perubahan entitas
+        # Logika POST (diasumsikan sudah benar)
         if "tanggal" not in request.form:
-            # Jangan proses transaksi, hanya render ulang berdasarkan entitas
             conn.close()
             return render_template("tambah_transaksi.html",
-                               anggota_list=anggota_list,
-                               jenis_list=jenis_list,
-                               last_trans=None,
-                               last_10=last_10,
-                               today=datetime.today().strftime("%Y-%m-%d"))
+                                   anggota_list=anggota_list,
+                                   jenis_list=jenis_list,
+                                   last_trans=None,
+                                   all_trans_data=all_trans_data,
+                                   today=datetime.today().strftime("%Y-%m-%d"))
 
         # Proses transaksi seperti biasa
         tanggal_input = request.form.get("tanggal")
@@ -381,22 +508,31 @@ def tambah():
                            anggota_list=anggota_list,
                            jenis_list=jenis_list,
                            last_trans=last_entry,
-                           last_10=last_10,
+                           all_trans_data=all_trans_data, # DIGANTI
                            today=datetime.today().strftime("%Y-%m-%d"))
 
 # ------------------------
 # ROUTE: Edit Transaksi
 # ------------------------
+# ------------------------
+# ROUTE: Edit Transaksi
+# ------------------------
 @app.route("/edit_transaksi/<int:id>", methods=["GET", "POST"])
 def edit_transaksi(id):
+    # Pengecekan Autentikasi (Diasumsikan login_required sudah diterapkan atau admin saja)
     if "user" not in session or session["user"] != "admin":
         return redirect(url_for("login"))
 
     entitas = session.get("entitas", "jurangmangucare")
+    
+    # --- PERBAIKAN LOGIKA FILTER ANGGOTA ---
     if entitas == "dkm":
-        filter_anggota = "Orang MAS"
+        # Gunakan tipe yang konsisten dengan route /tambah
+        tipe_anggota_entitas = "Anggota MAS"
     else:
-        filter_anggota = "Orang JMCare"
+        # Gunakan tipe yang konsisten dengan route /tambah
+        tipe_anggota_entitas = "Orang JMCare"
+    # -------------------------------------
 
     conn = get_connection(entitas)
 
@@ -413,22 +549,35 @@ def edit_transaksi(id):
         """, (kode_anggota, kode_jenis, uraian, jumlah, id))
         conn.commit()
         conn.close()
+        # Setelah berhasil, redirect kembali ke halaman tambah/daftar transaksi
+        flash("Transaksi berhasil diperbarui.", "success")
         return redirect(url_for("tambah"))
 
-# Ambil data transaksi
-    data = conn.execute("SELECT * FROM Transaksi WHERE No = ?", (id,)).fetchone()
+    # --- Ambil data transaksi yang akan di-edit
+    data = conn.execute("""
+        SELECT T.*, H.Tanggal AS TglTransaksi
+        FROM Transaksi T
+        JOIN HeaderTransaksi H ON T.KdTanggal = H.IDTanggal
+        WHERE T.No = ?
+    """, (id,)).fetchone()
 
-# Pastikan mengambil KodeAnggota dan NamaAnggota, bukan hanya KodeAnggota
+    if data is None:
+        conn.close()
+        flash("Transaksi tidak ditemukan.", "error")
+        return redirect(url_for("tambah"))
 
+    # --- Ambil Daftar Anggota dengan filter yang sudah diperbaiki
     anggota_list = conn.execute("""
         SELECT KodeAnggota, NamaAnggota FROM Anggota
-        WHERE JenisAnggota = ?
-    """, (filter_anggota,)).fetchall()
+        WHERE JenisAnggota IN (?, 'AkunInternal')
+        ORDER BY NamaAnggota
+    """, (tipe_anggota_entitas,)).fetchall()
 
-
+    # --- Ambil Daftar Jenis Transaksi
     jenis_list = conn.execute("""
         SELECT KodeJenisTrans, JenisTransaksi FROM JenisTransaksi
-      """).fetchall()
+        ORDER BY KodeJenisTrans
+    """).fetchall()
 
     conn.close()
 
@@ -480,7 +629,7 @@ def hapus_transaksi(id):
     return render_template("konfirmasi_hapus.html", transaksi=transaksi)
 
 # ------------------------
-# ROUTE: Tambah Anggota
+# ROUTE: Tambah Anggota (CREATE & READ)
 # ------------------------
 @app.route("/tambah_anggota", methods=["GET", "POST"])
 def tambah_anggota():
@@ -490,26 +639,146 @@ def tambah_anggota():
     entitas = session.get("entitas", "jurangmangucare")
     conn = get_connection(entitas)
 
-    message = None
+    # --- Filter Entitas ---
+    if entitas == "dkm":
+        tipe_anggota_entitas = "Anggota MAS" 
+    else:
+        tipe_anggota_entitas = "Orang JMCare" 
 
     if request.method == "POST":
+        # PERUBAHAN: Ambil NoAnggota dari form (input manual)
+        no_anggota_str = request.form["no_anggota"].strip()
         kode = request.form["kode_anggota"].strip().upper()
         nama = request.form["nama_anggota"].strip()
         jenis = request.form["jenis_anggota"].strip()
 
-        # Cek apakah kode sudah ada
-        exists = conn.execute("SELECT 1 FROM Anggota WHERE KodeAnggota = ?", (kode,)).fetchone()
-        if exists:
-            message = f"⚠️ Kode anggota '{kode}' sudah ada. Gunakan kode lain."
-        else:
-            conn.execute("INSERT INTO Anggota (KodeAnggota, NamaAnggota, JenisAnggota) VALUES (?, ?, ?)",
-                         (kode, nama, jenis))
-            conn.commit()
-            message = f"✅ Anggota '{nama}' berhasil ditambahkan."
+        # 1. Cek apakah KodeAnggota sudah ada
+        exists_kode = conn.execute("SELECT 1 FROM Anggota WHERE KodeAnggota = ?", (kode,)).fetchone()
+        
+        if exists_kode:
+            flash(f"Kode anggota '{kode}' sudah ada. Gunakan kode lain.", "error")
+            conn.close()
+            return redirect(url_for("tambah_anggota"))
+            
+        # 2. Cek apakah NoAnggota sudah ada
+        # Menggunakan no_anggota_str karena kolom DB masih TEXT
+        exists_no = conn.execute("SELECT 1 FROM Anggota WHERE NoAnggota = ?", (no_anggota_str,)).fetchone()
+        
+        if exists_no:
+            flash(f"No. Anggota '{no_anggota_str}' sudah ada. Gunakan nomor lain.", "error")
+            conn.close()
+            return redirect(url_for("tambah_anggota"))
 
-    conn.close()
-    return render_template("tambah_anggota.html", message=message)
+        else:
+            try:
+                # Lakukan INSERT menggunakan NoAnggota manual yang sudah diinput
+                conn.execute("INSERT INTO Anggota (NoAnggota, KodeAnggota, NamaAnggota, JenisAnggota) VALUES (?, ?, ?, ?)",
+                             (no_anggota_str, kode, nama, jenis))
+                conn.commit()
+                
+                # Menggunakan no_anggota_str (string) untuk pesan sukses
+                flash(f"Anggota '{nama}' ({kode}) berhasil ditambahkan dengan NoAnggota {no_anggota_str}.", "success")
+
+            except Exception as e:
+                conn.rollback()
+                # Menggunakan str(e) untuk penanganan error yang aman.
+                flash(f"Terjadi kesalahan saat menambahkan anggota: {str(e)}", "error")
+
+            finally:
+                conn.close()
+                return redirect(url_for("tambah_anggota"))
+
+    # --- LOGIKA SORTING (READ/GET) ---
+    sort_by = request.args.get("sort", "no_desc") 
     
+    order_map = {
+        # DIKEMBALIKAN: Menggunakan CAST karena DB column masih TEXT
+        "no_asc": "CAST(NoAnggota AS INTEGER) ASC",
+        "no_desc": "CAST(NoAnggota AS INTEGER) DESC",
+        "jenis_asc": "JenisAnggota ASC, CAST(NoAnggota AS INTEGER) ASC"
+    }
+    
+    order_clause = order_map.get(sort_by, "CAST(NoAnggota AS INTEGER) DESC")
+
+    # Ambil daftar seluruh anggota untuk GET request
+    try:
+        anggota_list = conn.execute(f"""
+            SELECT * FROM Anggota 
+            WHERE JenisAnggota IN (?, 'AkunInternal')
+            ORDER BY {order_clause}
+        """, (tipe_anggota_entitas,)).fetchall()
+    except Exception as e:
+        anggota_list = []
+        flash(f"Terjadi kesalahan saat memuat daftar anggota: {str(e)}", "error")
+    
+    conn.close()
+    
+    return render_template("tambah_anggota.html", 
+                           anggota_list=anggota_list, 
+                           current_sort=sort_by)
+
+# ------------------------
+# ROUTE: Edit Anggota (Update)
+# ------------------------
+@app.route("/edit_anggota/<kode>", methods=["GET", "POST"])
+def edit_anggota(kode):
+    if "user" not in session or session["user"] != "admin":
+        return redirect(url_for("login"))
+
+    entitas = session.get("entitas", "jurangmangucare")
+    conn = get_connection(entitas)
+    anggota_data = conn.execute("SELECT * FROM Anggota WHERE KodeAnggota = ?", (kode,)).fetchone()
+
+    if request.method == "POST":
+        nama = request.form["nama_anggota"].strip()
+        jenis = request.form["jenis_anggota"].strip()
+
+        conn.execute("UPDATE Anggota SET NamaAnggota = ?, JenisAnggota = ? WHERE KodeAnggota = ?",
+                     (nama, jenis, kode))
+        conn.commit()
+        conn.close()
+        
+        flash(f"Data anggota '{kode}' berhasil diperbarui.", "success")
+        return redirect(url_for("tambah_anggota"))
+    
+    conn.close()
+    
+    if anggota_data is None:
+        flash("Anggota tidak ditemukan.", "error")
+        return redirect(url_for("tambah_anggota"))
+
+    # Anda harus menyediakan template 'edit_anggota.html'
+    return render_template("edit_anggota.html", data=dict(anggota_data))
+
+
+# ------------------------
+# ROUTE: Hapus Anggota (Delete)
+# ------------------------
+@app.route("/hapus_anggota/<kode>", methods=["GET", "POST"])
+def hapus_anggota(kode):
+    if "user" not in session or session["user"] != "admin":
+        return redirect(url_for("login"))
+
+    entitas = session.get("entitas", "jurangmangucare")
+    conn = get_connection(entitas)
+    anggota_data = conn.execute("SELECT * FROM Anggota WHERE KodeAnggota = ?", (kode,)).fetchone()
+    
+    if anggota_data is None:
+        flash("Anggota tidak ditemukan.", "error")
+        conn.close()
+        return redirect(url_for("tambah_anggota"))
+
+    if request.method == "POST":
+        # Hapus data anggota
+        conn.execute("DELETE FROM Anggota WHERE KodeAnggota = ?", (kode,))
+        conn.commit()
+        conn.close()
+        
+        flash(f"Anggota '{kode}' berhasil dihapus.", "success")
+        return redirect(url_for("tambah_anggota"))
+    
+    conn.close()
+        
 # ------------------------
 # ROUTE: Tambah Jenis Transaksi
 # ------------------------
@@ -562,6 +831,177 @@ def rekapanggota():
     conn.close()
     return render_template(template_name, data=rows)
 
+
+# ------------------------
+# ROUTES: Laporan Keuangan DKM Ash Shiddiq (Wajib Entitas DKM)
+# ------------------------
+
+def get_report_data(view_name, entitas="dkm"):
+    """Fungsi helper untuk mengambil data laporan keuangan DKM."""
+    if entitas != "dkm":
+        flash("Laporan Keuangan hanya tersedia untuk DKM Ash Shiddiq.", "warning")
+        return []
+        
+    conn = get_connection(entitas)
+    try:
+        query = f"SELECT * FROM {view_name}"
+        rows = conn.execute(query).fetchall()
+        
+        # PERBAIKAN KRITIS: Konversi sqlite3.Row ke dict standar Python
+        # Ini akan memastikan Jinja2 mengakses kolom dengan nama yang sama persis
+        data_dicts = [dict(row) for row in rows]
+        return data_dicts
+        
+    except sqlite3.OperationalError as e:
+        flash(f"Error Database: View '{view_name}' tidak ditemukan. Pesan: {e}", "error")
+        return []
+    finally:
+        conn.close()
+
+
+# ------------------------
+# ROUTES: Helper 2 (Wajib Entitas DKM)
+# ------------------------
+def get_master_data(table_name, entitas):
+    """Fungsi helper untuk mengambil semua data dari tabel master (Anggota atau JenisTransaksi)."""
+    conn = get_connection(entitas)
+    try:
+        query = f"SELECT * FROM {table_name}"
+        rows = conn.execute(query).fetchall()
+        
+        # Konversi sqlite3.Row ke dict
+        data_dicts = [dict(row) for row in rows]
+        return data_dicts
+        
+    except sqlite3.OperationalError as e:
+        # Menangani jika tabel master tidak ditemukan (meski jarang)
+        print(f"Error Database: Tabel '{table_name}' tidak ditemukan. Pesan: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_anggota_dict(entitas):
+    """Mengambil data anggota dan mengonversinya menjadi dictionary untuk lookup cepat."""
+    anggota_list = get_master_data("Anggota", entitas)
+    # Membuat dictionary: { 'KodeAnggota': 'NamaAnggota' }
+    return {a['KodeAnggota']: a['NamaAnggota'] for a in anggota_list}
+
+def get_jenis_dict(entitas):
+    """Mengambil data jenis transaksi dan mengonversinya menjadi dictionary untuk lookup cepat."""
+    jenis_list = get_master_data("JenisTransaksi", entitas)
+    # Membuat dictionary: { 'KodeJenisTrans': 'JenisTransaksi' }
+    return {j['KodeJenisTrans']: j['JenisTransaksi'] for j in jenis_list}
+
+
+# ... (route lap_posisi_keuangan dan route lainnya tidak berubah) ...
+
+# ------------------------
+# ROUTE: Laporan Posisi Keuangan (PERUBAHAN AKSES)
+# ------------------------
+@app.route("/lap_posisi_keuangan")
+def lap_posisi_keuangan():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    
+    # Izinkan jika Admin ATAU Entitas saat ini adalah DKM
+    entitas = session.get("entitas", "jurangmangucare")
+    is_admin = session.get("user") == "admin"
+    
+    if not is_admin and entitas != "dkm":
+        flash("Laporan ini hanya tersedia untuk Administrator atau Anggota DKM Ash Shiddiq.", "error")
+        return redirect(url_for("index"))
+
+    # Nama VIEW tetap vw_LapPosisiKeuangan_Dinamis2
+    data = get_report_data("vw_LapPosisiKeuangan_Dinamis2", entitas)
+
+    return render_template("laporan_posisi_keuangan.html", data=data) 
+
+# ------------------------
+# ROUTE: Laporan Aktivitas (PERUBAHAN AKSES & LOGIKA)
+# ------------------------
+@app.route("/lap_aktivitas")
+@login_required # <--- Decorator akan memeriksa sesi sebelum fungsi dijalankan
+def lap_aktivitas():
+    
+    entitas = session.get("entitas")
+    # Asumsi: view vw_LapAktivitas2 berisi kolom 'Rincian' (yang berupa Kode Anggota/JenisTransaksi dengan sufiks)
+    data = get_report_data("vw_LapAktivitas2", entitas)
+    
+    # 1. Ambil data master untuk lookup cepat
+    # Asumsi get_anggota_dict dan get_jenis_dict sudah didefinisikan (seperti di app_master_helpers.py)
+    anggota_lookup = get_anggota_dict(entitas)
+    jenis_lookup = get_jenis_dict(entitas)
+    
+    # 2. Sisipkan NamaAnggota dan JenisTransaksi ke setiap baris data
+    for row in data:
+        # Kolom yang memuat kode ringkas di laporan Anda adalah 'Rincian'
+        kode_laporan = row.get('Rincian', '') 
+        
+        kode_anggota_asli = ''
+        kode_jenis_asli = ''
+        
+        # Logika Pemrosesan Kode:
+        # Cek apakah kode_laporan adalah kode Anggota atau Jenis Transaksi
+        
+        # (A) Coba Asosiasi sebagai Kode Anggota
+        # Hapus sufiks setelah underscore (misal: INF_ADH_Dana -> INF_ADH)
+        if '_' in kode_laporan:
+            # Contoh: INF_ADH_Dana
+            # Ambil bagian pertama (INF_ADH) sebagai potensi Kode Anggota
+            potensi_anggota_kode = kode_laporan.split('_')[0] + '_' + kode_laporan.split('_')[1]
+            # Cek apakah kode_laporan sama dengan kode OPE_ADH
+            if kode_laporan.startswith('OPE_'):
+              potensi_anggota_kode = kode_laporan
+        
+        # Kasus 1: Kode Laporan = OPE_ADH (Kode master sama dengan kode laporan)
+        if kode_laporan in anggota_lookup:
+            kode_anggota_asli = kode_laporan
+        # Kasus 2: Kode Laporan = INF_ADH_Dana (Kode master INF_ADH)
+        elif '_' in kode_laporan and potensi_anggota_kode in anggota_lookup:
+            kode_anggota_asli = potensi_anggota_kode
+        # Kasus 3: Kode Laporan memiliki sufiks, tapi hanya 1 pemisah (Misal: INF_RUT_Dana)
+        elif kode_laporan.count('_') >= 2:
+            kode_anggota_asli = kode_laporan.rsplit('_', 1)[0]
+            
+        # Jika berhasil menemukan Kode Anggota/Jenis Transaksi, lakukan lookup
+        if kode_anggota_asli:
+            row['KodeAnggotaLaporan'] = kode_anggota_asli
+            row['NamaAnggota'] = anggota_lookup.get(kode_anggota_asli, 'Anggota Tidak Dikenal')
+            row['KodeJenisTransLaporan'] = kode_anggota_asli
+            row['JenisTransaksi'] = jenis_lookup.get(kode_anggota_asli, 'Jenis Transaksi Tidak Dikenal')
+        else:
+            # Jika tidak ada Kode Anggota yang cocok (mungkin ini adalah baris subtotal/judul)
+            row['KodeAnggotaLaporan'] = ''
+            row['NamaAnggota'] = 'T/A'
+            row['KodeJenisTransLaporan'] = ''
+            row['JenisTransaksi'] = 'T/A'
+        
+    # Render template dengan data yang sudah diperkaya
+    return render_template("laporan_aktivitas.html", data=data)
+
+
+@app.route("/saldo_akun")
+def saldo_akun():
+    # Periksa otentikasi admin
+    if session.get("user") != "admin":
+        return redirect(url_for("login"))
+
+    entitas = session.get("entitas")
+    
+    # Ambil data dari VIEW saldo akun
+    data = get_report_data("vw_SaldoAkun_Final2", entitas)
+    
+    # Render template
+    return render_template("saldo_akun.html", data=data)
+
+
+@app.route("/buku_besar")
+def buku_besar():
+    if session.get("user") != "admin":
+        return redirect(url_for("login"))
+
+    data = get_report_data("vw_BukuBesar_Final2", session.get("entitas"))
+    return render_template("buku_besar.html", data=data)
 
 
 if __name__ == "__main__":

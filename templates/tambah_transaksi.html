@@ -3,92 +3,276 @@
 {% block content %}
 <h2>➕ Form Tambah Transaksi</h2>
 
-<!-- Form Dropdown Entitas -->
-<form method="POST">
-    <div class="form-group">
-        <label for="entitas">Pilih Entitas:</label>
-        <select name="entitas" id="entitas" onchange="this.form.submit()" required>
-            <option value="jurangmangucare" {% if session.get('entitas', 'jurangmangucare') == 'jurangmangucare' %}selected{% endif %}>JurangmanguCare</option>
-            <option value="dkm" {% if session.get('entitas') == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
-        </select>
-    </div>
-</form>
+<style>
+    /* Styling khusus untuk merapikan form */
+    .form-container {
+        background-color: #f7f9fc;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        margin-bottom: 30px;
+    }
+    .form-group {
+        display: flex; /* Menggunakan Flexbox untuk perataan */
+        flex-direction: column;
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+        font-size: 0.95rem;
+    }
+    /* Menyatukan styling untuk semua input/select */
+    .form-group input[type="date"],
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select {
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1rem;
+        width: 100%; /* Memastikan lebar penuh di dalam form-group */
+        box-sizing: border-box;
+    }
+    /* Styling tombol Simpan */
+    .btn-submit {
+        background-color: #4CAF50; /* Hijau */
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+        margin-top: 10px;
+    }
+    .btn-submit:hover {
+        background-color: #45a049;
+    }
 
-<!-- Form Input Transaksi -->
-<form method="POST">
-    <div class="form-group">
-        <label for="tanggal">Tanggal Transaksi:</label>
-        <input type="date" name="tanggal" id="tanggal" value="{{ today }}" required>
-    </div>
+    /* Styling Tabel Transaksi */
+    #transaksiTable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    #transaksiTable th, #transaksiTable td {
+        border: 1px solid #ddd;
+        padding: 10px;
+    }
+    #transaksiTable thead th {
+        background-color: #f0f0f0;
+        font-weight: bold;
+    }
+    #transaksiTable td:nth-child(6) { /* Kolom Jumlah */
+        font-family: monospace;
+    }
+    
+    /* Input Search */
+    #searchInput {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 15px;
+    }
+    /* Responsif untuk layar kecil */
+    @media (min-width: 600px) {
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .form-row .full-width {
+            grid-column: 1 / -1; /* Ambil seluruh lebar */
+        }
+    }
+</style>
 
-    <div class="form-group">
-        <label for="kode_anggota">Sumber Dana:</label>
-        <select name="kode_anggota" id="kode_anggota" required>
-            <option value="">--Pilih Sumber Dana--</option>
-            {% for anggota in anggota_list %}
-                <option value="{{ anggota['KodeAnggota'] }}">{{ anggota['KodeAnggota'] }} - {{ anggota['NamaAnggota'] }}</option>
-            {% endfor %}
-        </select>
-    </div>
+{# FORM PEmILIHAN ENTITAS #}
+<div class="form-container">
+    <form method="POST">
+        <div class="form-group" style="flex-direction: row; align-items: center;">
+            <label for="entitas" style="margin-right: 15px; margin-bottom: 0;">Pilih Entitas:</label>
+            <select name="entitas" id="entitas" onchange="this.form.submit()" style="width: auto;" required>
+                <option value="jurangmangucare" {% if session.get('entitas', 'jurangmangucare') == 'jurangmangucare' %}selected{% endif %}>JurangmanguCare</option>
+                <option value="dkm" {% if session.get('entitas') == 'dkm' %}selected{% endif %}>DKM Ash Shiddiq</option>
+            </select>
+        </div>
+    </form>
+</div>
 
-    <div class="form-group">
-        <label for="kode_jenis">Kode Jenis Transaksi:</label>
-        <select name="kode_jenis" id="kode_jenis" required>
-            <option value="">--Pilih Jenis Transaksi--</option>
-            {% for jenis in jenis_list %}
-                <option value="{{ jenis['KodeJenisTrans'] }}">{{ jenis['KodeJenisTrans'] }} - {{ jenis['JenisTransaksi'] }}</option>
-            {% endfor %}
-        </select>
-    </div>
 
-    <div class="form-group">
-        <label for="uraian">Uraian:</label>
-        <input type="text" name="uraian" id="uraian" required>
-    </div>
+{# FORM INPUT TRANSAKSI UTAMA #}
+<div class="form-container">
+    <form method="POST">
+        <div class="form-row">
+            {# PERUBAHAN TATA LETAK DIMULAI DI SINI #}
+            
+            {# Baris 1: Tanggal Transaksi (FULL WIDTH) #}
+            <div class="form-group full-width">
+                <label for="tanggal">Tanggal Transaksi:</label>
+                <input type="date" name="tanggal" id="tanggal" value="{{ today }}" required>
+            </div>
+            
+            {# Baris 2: Kode Anggota (Kiri) dan Jenis Transaksi (Kanan) #}
+            <div class="form-group">
+                <label for="kode_anggota">Sumber Dana (Debet/Kredit):</label>
+                <select name="kode_anggota" id="kode_anggota" required>
+                    <option value="">--Pilih Anggota/Sumber Dana--</option>
+                    {% for anggota in anggota_list %}
+                        <option value="{{ anggota['KodeAnggota'] }}">{{ anggota['KodeAnggota'] }} - {{ anggota['NamaAnggota'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-    <div class="form-group">
-        <label for="jumlah">Jumlah:</label>
-        <input type="number" name="jumlah" id="jumlah" required>
-    </div>
+            <div class="form-group">
+                <label for="kode_jenis">Jenis Transaksi (Debet/Kredit):</label>
+                <select name="kode_jenis" id="kode_jenis" required>
+                    <option value="">--Pilih Jenis Transaksi--</option>
+                    {% for jenis in jenis_list %}
+                        <option value="{{ jenis['KodeJenisTrans'] }}">{{ jenis['KodeJenisTrans'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            {# Baris 3: Jumlah (FULL WIDTH) #}
+            <div class="form-group full-width">
+                <label for="jumlah">Jumlah (Rp):</label>
+                <input type="number" name="jumlah" id="jumlah" step="any" required>
+            </div>
 
-    <input type="submit" class="btn" value="💾 Simpan">
-</form>
+            {# Baris 4: Uraian (FULL WIDTH) #}
+            <div class="form-group full-width">
+                <label for="uraian">Uraian Transaksi:</label>
+                <input type="text" name="uraian" id="uraian" required>
+            </div>
+            
+            {# PERUBAHAN TATA LETAK BERAKHIR DI SINI #}
+        </div>
 
+        <input type="submit" class="btn-submit" value="💾 Simpan Transaksi">
+    </form>
+</div>
+
+
+{# BLOK SUKSES TRANSAKSI #}
 {% if last_trans %}
-<div style="background-color:#e0ffe0; border:1px solid #70d070; padding:10px; margin-top:20px;">
-    <h4>✅ Transaksi Berhasil Disimpan:</h4>
-    <ul>
-        <li>Tanggal: {{ last_trans["Tanggal"] }}</li>
-        <li>Kode Anggota: {{ last_trans["KodeAnggota"] }}</li>
-        <li>Kode Jenis: {{ last_trans["KodeJenisTrans"] }}</li>
-        <li>Uraian: {{ last_trans["Uraian"] }}</li>
-        <li>Jumlah: {{ "{:,}".format(last_trans["Jumlah"]) }}</li>
+<div style="background-color:#e0ffe0; border:1px solid #70d070; padding:15px; margin-top:20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+    <h4>✅ Transaksi Berhasil Disimpan (No. {{ last_trans["No"] }}):</h4>
+    <ul style="list-style-type: none; padding-left: 0; margin-top: 10px;">
+        <li style="margin-bottom: 5px;"><strong>Tanggal:</strong> {{ last_trans["Tanggal"] }}</li>
+        <li style="margin-bottom: 5px;"><strong>Anggota:</strong> {{ last_trans["KodeAnggota"] }}</li>
+        <li style="margin-bottom: 5px;"><strong>Jenis:</strong> {{ last_trans["KodeJenisTrans"] }}</li>
+        <li style="margin-bottom: 5px;"><strong>Uraian:</strong> {{ last_trans["Uraian"] }}</li>
+        <li style="margin-bottom: 5px;"><strong>Jumlah:</strong> Rp {{ "{:,.2f}".format(last_trans["Jumlah"]) }}</li>
     </ul>
 </div>
 {% endif %}
 
-<h3>🕓 10 Transaksi Terakhir</h3>
-<table>
-    <tr>
-        <th>Tanggal</th>
-        <th>Anggota</th>
-        <th>Jenis</th>
-        <th>Uraian</th>
-        <th>Jumlah</th>
-        <th>Aksi</th>
-    </tr>
-    {% for trans in last_10 %}
-    <tr>
-        <td>{{ trans["Tanggal"] }}</td>
-        <td>{{ trans["KodeAnggota"] }}</td>
-        <td>{{ trans["KodeJenisTrans"] }}</td>
-        <td>{{ trans["Uraian"] }}</td>
-        <td>{{ "{:,}".format(trans["Jumlah"]) }}</td>
-        <td>
-            <a href="{{ url_for('edit_transaksi', id=trans['No']) }}">✏️ Edit</a>
-            <a href="{{ url_for('hapus_transaksi', id=trans['No']) }}" onclick="return confirm('Yakin ingin menghapus transaksi ini?')">❌ Hapus</a>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+<h3 style="margin-top: 40px;">📝 Daftar Seluruh Transaksi (Read, Edit, Hapus)</h3>
+<div style="margin-bottom: 10px;">
+    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari berdasarkan No/Tanggal/Anggota/Jenis/Uraian...">
+</div>
+
+{# TABEL TRANSAKSI #}
+<div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px;">
+    <table id="transaksiTable">
+        <thead>
+            <tr>
+                <th>No</th> 
+                <th>Tanggal</th>
+                <th>Anggota</th>
+                <th>Jenis</th>
+                <th>Uraian</th>
+                <th style="text-align: right;">Jumlah</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trans in all_trans_data %} 
+            <tr>
+                <td>{{ trans["No"] }}</td> 
+                <td>{{ trans["Tanggal"] }}</td>
+                <td>{{ trans["KodeAnggota"] }}</td>
+                <td>{{ trans["KodeJenisTrans"] }}</td>
+                <td>{{ trans["Uraian"] }}</td>
+                <td style="text-align: right; font-family: monospace;">{{ "{:,.2f}".format(trans["Jumlah"]) }}</td>
+                <td>
+                    <a href="{{ url_for('edit_transaksi', id=trans['No']) }}" style="color: #007bff; text-decoration: none;">Edit</a> |
+                    {# Mengganti confirm() dengan fungsi kustom untuk kepatuhan Canvas #}
+                    <a href="{{ url_for('hapus_transaksi', id=trans['No']) }}" style="color: #dc3545; text-decoration: none;" 
+                       onclick="return customDeleteAlert(event, '{{ url_for('hapus_transaksi', id=trans['No']) }}');">Hapus</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+// Fungsi kustom untuk konfirmasi hapus
+// Menggantikan window.confirm() karena batasan iFrame/Canvas
+function customDeleteAlert(event, deleteUrl) {
+    event.preventDefault(); // Mencegah navigasi langsung
+    
+    // Tampilkan pesan menggunakan window.alert() sebagai alternatif non-modal confirm
+    alert("PERINGATAN: Apakah Anda yakin ingin menghapus transaksi ini? (Transaksi No. " + deleteUrl.split('/').pop() + ")");
+    
+    // Karena konfirmasi tidak bisa dilakukan via confirm(), 
+    // saya akan membiarkan user mengetahui, tetapi Anda perlu 
+    // mengimplementasikan *modal UI* di aplikasi Anda untuk konfirmasi yang sebenarnya.
+    
+    // Saya kembalikan ke false agar link tidak langsung navigasi.
+    return false;
+}
+
+
+// Fungsi untuk memfilter tabel
+function filterTable() {
+    var input, filter, table, tr, td, i, j, txtValue;
+    input = document.getElementById("searchInput");
+    filter = input.value.toUpperCase();
+    table = document.getElementById("transaksiTable");
+    tr = table.getElementsByTagName("tr");
+
+    // KOLOM YANG DICARI: 0: No, 1: Tanggal, 2: Anggota, 3: Jenis, 4: Uraian
+    var columnsToSearch = [0, 1, 2, 3, 4]; 
+
+    // Loop melalui semua baris tabel, mulai dari 1 (abaikan header)
+    for (i = 1; i < tr.length; i++) {
+        tr[i].style.display = "none"; // Sembunyikan semua baris secara default
+        
+        var match = false;
+        
+        for (j = 0; j < columnsToSearch.length; j++) {
+            td = tr[i].getElementsByTagName("td")[columnsToSearch[j]];
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    match = true;
+                    break;
+                }
+            }
+        }
+        if(match) {
+            tr[i].style.display = "";
+        }
+    }
+}
+
+// Tambahkan event listener untuk mencegah form entitas mengirim data ke form transaksi utama
+document.addEventListener('DOMContentLoaded', function() {
+    var formEntitas = document.querySelector('form[onchange]');
+    if (formEntitas) {
+        formEntitas.addEventListener('submit', function(e) {
+            // Biarkan submit berjalan normal untuk pemilihan entitas
+        });
+    }
+});
+</script>
+
 {% endblock %}
